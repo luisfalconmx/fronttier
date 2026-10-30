@@ -137,7 +137,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 560,
     title: 'Fronttier',
-    backgroundColor: '#14161a',
+    backgroundColor: '#000000',
     show: false,
     webPreferences: {
       preload: join(DIST, 'preload-shell.js'),

@@ -24,7 +24,7 @@ import type { SyncEvent } from '../shared/types';
       document.body.appendChild(badge);
     }
     badge.textContent = online ? '● Fronttier Portal' : '○ Portal desconectado';
-    badge.style.background = online ? '#6d28d9' : '#6b7280';
+    badge.style.background = online ? '#e7000b' : '#6b7280';
   }
 
   function connect() {

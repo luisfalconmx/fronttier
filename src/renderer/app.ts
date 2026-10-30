@@ -6,6 +6,7 @@ import { PaneView } from './pane';
 import { openPalette, type Command } from './palette';
 import { PANELS, type PanelInstance } from './panels';
 import { Recorder } from './recorder';
+import { version } from '../../package.json';
 import { DEFAULT_EMULATION, DEFAULT_TOOLS, defaultSettings, newTab, normalizeUrl, paneFromDevice, paneFromWidth, presetPanes, type Layout, type Settings, type TabState } from './state';
 
 type Handler = (...args: any[]) => void;
@@ -108,9 +109,7 @@ export class App {
   }
 
   applyTheme() {
-    const t = this.settings.theme;
-    const dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    document.documentElement.dataset.theme = 'dark';
   }
 
   // ---------- DOM ----------
@@ -691,11 +690,11 @@ export class App {
     canvas.width = W;
     canvas.height = H;
     const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#e5e7eb';
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, W, H);
     let x = pad;
     for (const s of scaled) {
-      ctx.fillStyle = '#111827';
+      ctx.fillStyle = '#ededed';
       ctx.font = '600 16px system-ui, sans-serif';
       ctx.fillText(`${s.p.cfg.name} — ${s.p.viewport.width}×${s.p.viewport.height}`, x, pad + 18);
       ctx.shadowColor = 'rgba(0,0,0,.2)';
@@ -766,8 +765,8 @@ export class App {
   private async updateRam() {
     try {
       const m = await api().metrics();
-      this.ram.textContent = `RAM ${m.totalMB} MB`;
-      this.ram.title = m.processes.map((p) => `${p.type}: ${p.mb} MB`).join('\n');
+      this.ram.textContent = `RAM ${fmtMB(m.totalMB)}`;
+      this.ram.title = m.processes.map((p) => `${p.type}: ${fmtMB(p.mb)}`).join('\n');
       this.events.emit('metrics', m);
     } catch {}
   }
@@ -790,6 +789,7 @@ export class App {
     ].filter(Boolean) as string[];
     clear(
       this.status,
+      h('span', { class: 'version' }, `v${version}`),
       h('span', null, `${this.panes.length} paneles`),
       h('span', { class: syncOn ? '' : 'warn' }, syncOn === 6 ? 'Sincronización total' : syncOn ? `Sincronización parcial (${syncOn}/6)` : 'Sin sincronización'),
       overflowing ? h('button', { class: 'warn link', onclick: () => this.setTools({ overflow: true }) }, `⚠ ${overflowing} con desborde horizontal`) : null,
@@ -828,7 +828,6 @@ export class App {
       this.toast('Cambio detectado: ' + file);
     });
     a.on('ctx', (c: { wcId: number; action: string; x: number; y: number; src?: string }) => this.onContext(c));
-    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => this.applyTheme());
   }
 
   private async onContext(c: { wcId: number; action: string; x: number; y: number; src?: string }) {
@@ -937,11 +936,6 @@ export class App {
       c('toggle-rulers', 'Reglas', () => this.setTools({ rulers: !this.tools.rulers })),
       c('toggle-layout-debug', 'Depuración de layout', () => this.setTools({ layoutDebug: !this.tools.layoutDebug })),
       c('toggle-sync-scroll', 'Sincronizar scroll', () => this.setSync({ scroll: !this.settings.sync.scroll })),
-      c('toggle-dark', 'Tema claro/oscuro de Fronttier', () => {
-        this.settings.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-        this.applyTheme();
-        this.save();
-      }),
       c('new-pane', 'Nuevo panel', () => this.addPane(paneFromWidth(1024, 768)), '⇧⌘N'),
       c('rotate-panes', 'Rotar todos los paneles', () => this.panes.forEach((p) => p.update({ width: p.cfg.height, height: p.cfg.width }))),
       c('randomize-panes', 'Tamaños de panel aleatorios', () =>
@@ -997,4 +991,9 @@ function loadImage(src: string) {
     img.onerror = reject;
     img.src = src;
   });
+}
+
+/** Megabytes as "500 MB", switching to "1.8 GB" from 1000 MB up. */
+function fmtMB(mb: number) {
+  return mb >= 1000 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`;
 }

@@ -1,47 +1,25 @@
 :root {
-  --bg: #f4f5f7;
-  --bg-2: #ffffff;
-  --bg-3: #eceef2;
-  --canvas: #e3e6eb;
-  --fg: #16181d;
-  --fg-2: #4b5260;
-  --muted: #6b7280;
-  --line: #d9dde3;
-  --accent: #6d28d9;
-  --accent-2: #ede9fe;
+  --bg: #0a0a0a;
+  --bg-2: #111111;
+  --bg-3: #1f1f1f;
+  --canvas: #000000;
+  --fg: #ededed;
+  --fg-2: #a1a1a1;
+  --muted: #8f8f8f;
+  --line: #262626;
+  --accent: #e7000b;
+  --accent-2: #3b0a0d;
   --accent-fg: #ffffff;
-  --good: #15803d;
-  --mid: #b45309;
-  --bad: #dc2626;
-  --good-bg: #dcfce7;
-  --mid-bg: #fef3c7;
-  --bad-bg: #fee2e2;
-  --info-bg: #e0e7ff;
-  --shadow: 0 8px 28px rgba(15, 23, 42, 0.16);
-  --radius: 8px;
-  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color-scheme: light;
-}
-:root[data-theme='dark'] {
-  --bg: #15171c;
-  --bg-2: #1c1f26;
-  --bg-3: #262a33;
-  --canvas: #0e1014;
-  --fg: #e8eaee;
-  --fg-2: #b6bcc8;
-  --muted: #8a92a2;
-  --line: #2e333d;
-  --accent: #a78bfa;
-  --accent-2: #2e2550;
-  --accent-fg: #15171c;
   --good: #4ade80;
   --mid: #fbbf24;
   --bad: #f87171;
-  --good-bg: #14361f;
-  --mid-bg: #3d2f0b;
-  --bad-bg: #401717;
-  --info-bg: #23284a;
-  --shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
+  --good-bg: #0f2a18;
+  --mid-bg: #2e2408;
+  --bad-bg: #3b0a0d;
+  --info-bg: #1a1a1a;
+  --shadow: 0 10px 32px rgba(0, 0, 0, 0.6);
+  --radius: 8px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color-scheme: dark;
 }
 
@@ -285,12 +263,9 @@ details > summary { cursor: pointer; padding: 3px 0; }
 .dom-row:hover { background: var(--bg-3); }
 .dom-row.sel { background: var(--accent-2); }
 .twisty { display: inline-block; width: 12px; color: var(--muted); cursor: pointer; }
-.tag { color: #a21caf; }
-:root[data-theme='dark'] .tag { color: #f0abfc; }
-.attr-k { color: #b45309; }
-:root[data-theme='dark'] .attr-k { color: #fcd34d; }
-.attr-v { color: #1d4ed8; }
-:root[data-theme='dark'] .attr-v { color: #93c5fd; }
+.tag { color: #f0abfc; }
+.attr-k { color: #fcd34d; }
+.attr-v { color: #93c5fd; }
 .attr-eq, .node-text { color: var(--muted); }
 .dom-actions { display: grid; gap: 6px; margin-top: 8px; }
 .dom-actions .sel { word-break: break-all; font-size: 11px; background: var(--bg-3); padding: 4px 6px; border-radius: 4px; }
@@ -349,6 +324,7 @@ details > summary { cursor: pointer; padding: 3px 0; }
 .status button.link { font-size: 11.5px; }
 .emu-tags { color: var(--accent); overflow: hidden; text-overflow: ellipsis; }
 .ram { font-variant-numeric: tabular-nums; }
+.status .version { color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* Popovers & menus */
 .popover { position: fixed; z-index: 1000; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); padding: 6px; overflow-y: auto; min-width: 200px; }
@@ -364,7 +340,7 @@ details > summary { cursor: pointer; padding: 3px 0; }
 .pane-settings { display: grid; gap: 8px; padding: 4px; }
 
 /* Command palette */
-.palette-backdrop, .modal-backdrop { position: fixed; inset: 0; background: rgba(10, 12, 16, 0.4); z-index: 2000; display: grid; place-items: start center; padding-top: 12vh; }
+.palette-backdrop, .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); z-index: 2000; display: grid; place-items: start center; padding-top: 12vh; }
 .modal-backdrop { place-items: center; padding: 24px; }
 .palette { width: min(600px, 92vw); background: var(--bg-2); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; border: 1px solid var(--line); }
 .palette-input { width: 100%; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 14px 16px; font-size: 15px; background: transparent; }
@@ -381,7 +357,7 @@ kbd { background: var(--bg-3); border: 1px solid var(--line); border-radius: 4px
 .modal.reader .close { position: absolute; top: 10px; right: 10px; }
 
 /* Screenshot editor */
-.editor { position: fixed; inset: 0; z-index: 3000; background: rgba(10,12,16,.92); display: grid; grid-template-rows: auto 1fr; }
+.editor { position: fixed; inset: 0; z-index: 3000; background: rgba(0,0,0,.92); display: grid; grid-template-rows: auto 1fr; }
 .editor-toolbar { display: flex; gap: 6px; align-items: center; padding: 8px 12px; background: var(--bg-2); flex-wrap: wrap; }
 .editor-toolbar input[type=color] { width: 32px; height: 28px; padding: 1px; }
 .editor-toolbar input[type=range] { width: 90px; }

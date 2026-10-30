@@ -403,7 +403,6 @@ export function settingsPanel(app: App) {
       body,
       section(
         'General',
-        field('Tema de Fronttier', select(s.theme, [['system', 'Sistema'], ['light', 'Claro'], ['dark', 'Oscuro']], (v) => (set('theme', v), app.applyTheme()))),
         field('Buscador de la barra de direcciones', select(s.searchEngine, [['duckduckgo', 'DuckDuckGo'], ['google', 'Google'], ['bing', 'Bing'], ['ecosia', 'Ecosia']], (v) => set('searchEngine', v))),
         field('Paneles para pestañas nuevas', select(s.defaultPreset, Object.entries(PRESETS).map(([k, p]) => [k, p.label] as [string, string]), (v) => set('defaultPreset', v))),
         toggle('Emular densidad de píxeles (DPR)', s.emulateDpr, (v) => (set('emulateDpr', v), app.panes.forEach((p) => p.emulate())), 'Desactívalo para ahorrar memoria en equipos modestos.'),

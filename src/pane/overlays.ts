@@ -93,7 +93,7 @@ function drawFocusOrder() {
   const line = document.createElementNS(svgNS, 'polyline');
   line.setAttribute('points', pts.map((p) => `${p.x + 10},${p.y + 10}`).join(' '));
   line.setAttribute('fill', 'none');
-  line.setAttribute('stroke', '#6d28d9');
+  line.setAttribute('stroke', '#e7000b');
   line.setAttribute('stroke-width', '2');
   line.setAttribute('stroke-dasharray', '6 4');
   svg.appendChild(line);

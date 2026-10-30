@@ -335,7 +335,7 @@ export function fillForms(email: string) {
     else if (type === 'time') v = '10:30';
     else if (type === 'month') v = today.slice(0, 7);
     else if (type === 'week') v = today.slice(0, 4) + '-W10';
-    else if (type === 'color') v = '#6d28d9';
+    else if (type === 'color') v = '#e7000b';
     else if (/given|first|fname|primer nombre/.test(hint)) v = SAMPLE.first;
     else if (/family|last|apellido|lname|surname/.test(hint)) v = SAMPLE.last;
     else if (/name|nombre/.test(hint)) v = `${SAMPLE.first} ${SAMPLE.last}`;

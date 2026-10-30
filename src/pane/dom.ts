@@ -7,7 +7,7 @@ const STYLES = `
 * { box-sizing: border-box; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
 .fixed { position: fixed; inset: 0; pointer-events: none; }
 .doc { position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none; }
-.badge { position: absolute; font: 600 11px/1 system-ui, sans-serif; color: #fff; background: #6d28d9; border-radius: 10px; padding: 3px 6px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+.badge { position: absolute; font: 600 11px/1 system-ui, sans-serif; color: #fff; background: #e7000b; border-radius: 10px; padding: 3px 6px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
 .badge.fail { background: #dc2626; }
 .badge.warn { background: #d97706; }
 .badge.alt { background: rgba(17,24,39,.9); max-width: 260px; white-space: normal; font-weight: 500; line-height: 1.3; }
@@ -30,8 +30,8 @@ const STYLES = `
 .pos { position: fixed; font: 10px/1 ui-monospace, monospace; background: #ef4444; color: #fff; padding: 2px 4px; border-radius: 3px; }
 .grid { position: fixed; top: 0; bottom: 0; display: flex; left: 0; right: 0; margin: 0 auto; }
 .grid > div { flex: 1; background: rgba(239,68,68,.12); border-left: 1px solid rgba(239,68,68,.35); border-right: 1px solid rgba(239,68,68,.35); }
-.hl { position: absolute; border: 2px solid #8b5cf6; background: rgba(139,92,246,.15); border-radius: 2px; transition: opacity .4s; }
-.hl-label { position: absolute; transform: translateY(-100%); background: #8b5cf6; color: #fff; font: 600 11px/1 system-ui; padding: 3px 5px; border-radius: 3px 3px 0 0; white-space: nowrap; }
+.hl { position: absolute; border: 2px solid #e7000b; background: rgba(231,0,11,.15); border-radius: 2px; transition: opacity .4s; }
+.hl-label { position: absolute; transform: translateY(-100%); background: #e7000b; color: #fff; font: 600 11px/1 system-ui; padding: 3px 5px; border-radius: 3px 3px 0 0; white-space: nowrap; }
 .veil { position: fixed; inset: 0; pointer-events: none; }
 `;
 

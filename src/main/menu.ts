@@ -51,7 +51,6 @@ export function buildMenu(win: BrowserWindow) {
         item('Reglas', 'toggle-rulers', 'CmdOrCtrl+Alt+U'),
         item('Depuración de layout', 'toggle-layout-debug', 'CmdOrCtrl+Alt+D'),
         item('Sincronizar scroll', 'toggle-sync-scroll'),
-        item('Tema claro/oscuro', 'toggle-dark'),
         { type: 'separator' },
         { label: 'Herramientas de desarrollo de Fronttier', accelerator: 'CmdOrCtrl+Alt+I', click: () => win.webContents.toggleDevTools() },
       ],
