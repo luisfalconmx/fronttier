@@ -85,7 +85,7 @@
         "zip"
       ],
       "category": "public.app-category.developer-tools",
-      "identity": null,
+      "identity": "-",
       "hardenedRuntime": false,
       "artifactName": "Fronttier-${version}-mac-${arch}.${ext}"
     },

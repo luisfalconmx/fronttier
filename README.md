@@ -21,13 +21,13 @@ Los instaladores se generan en la carpeta `release/` (ver [Compilar los instalad
 
 ### Primer arranque: avisos de seguridad
 
-Los instaladores **no están firmados digitalmente** (firmar requiere certificados de pago de Apple y Microsoft), así que el sistema mostrará un aviso la primera vez:
+Los instaladores **no tienen firma de desarrollador verificada** (eso requiere certificados de pago de Apple y Microsoft), así que el sistema mostrará un aviso la primera vez:
 
 - **Windows (SmartScreen):** “Windows protegió tu PC” → **Más información** → **Ejecutar de todas formas**.
-- **macOS (Gatekeeper):** “No se puede abrir porque es de un desarrollador no identificado” → en Finder, clic derecho sobre Fronttier → **Abrir** → **Abrir**. Si dice que la app “está dañada”, ejecuta una vez:
+- **macOS (Gatekeeper):** la app lleva firma ad-hoc pero no está notarizada por Apple, así que la primera vez macOS dice que no pudo verificarla. Pulsa **Listo**, ve a **Ajustes del Sistema → Privacidad y seguridad** y pulsa **Abrir de todos modos** junto a “Se bloqueó Fronttier”. También puedes quitar la cuarentena desde Terminal:
 
   ```bash
-  xattr -cr /Applications/Fronttier.app
+  xattr -dr com.apple.quarantine /Applications/Fronttier.app
   ```
 
 - **Linux (AppImage):** si al hacer doble clic no abre, márcalo como ejecutable (`chmod +x`). Usa un runtime estático, así que no necesita `libfuse2`.
