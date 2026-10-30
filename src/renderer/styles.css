@@ -98,6 +98,8 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 
 /* Tabs */
 .tabbar { display: flex; align-items: center; gap: 4px; padding: 6px 8px 0; background: var(--bg-3); -webkit-app-region: drag; }
+/* macOS: leave room for the traffic lights, which overlay the tab bar. */
+:root.mac:not(.fullscreen) .tabbar { padding-left: 80px; min-height: 38px; }
 .tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; min-width: 0; }
 .tab, .tabbar button { -webkit-app-region: no-drag; }
 .tab {

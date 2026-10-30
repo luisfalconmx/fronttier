@@ -138,6 +138,9 @@ function createWindow() {
     minHeight: 560,
     title: 'Fronttier',
     backgroundColor: '#000000',
+    // macOS: no title bar; the traffic lights sit inside the tab bar.
+    titleBarStyle: process.platform === 'darwin' ? 'hidden' : 'default',
+    trafficLightPosition: { x: 14, y: 13 },
     show: false,
     webPreferences: {
       preload: join(DIST, 'preload-shell.js'),
@@ -158,6 +161,8 @@ function createWindow() {
   win.on('resize', saveBounds);
   win.on('move', saveBounds);
   win.on('closed', () => (win = null));
+  win.on('enter-full-screen', () => toHost('fullscreen', true));
+  win.on('leave-full-screen', () => toHost('fullscreen', false));
 
   // Every <webview> gets our pane preload and a locked-down renderer, whatever
   // the shell page asks for.

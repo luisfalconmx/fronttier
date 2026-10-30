@@ -75,6 +75,7 @@ export class App {
     }
     this.tab = this.settings.tabs.find((t) => t.id === this.settings.activeTab) ?? this.settings.tabs[0];
     this.applyTheme();
+    document.documentElement.classList.toggle('mac', api().platform === 'darwin');
     this.buildCommands();
     this.buildDom();
     for (const p of PANELS) if (p.eager) this.panels.set(p.id, p.create(this));
@@ -817,6 +818,7 @@ export class App {
         if (ev.url !== this.tab.url) this.navigate(ev.url);
       } else this.broadcast(null, ev);
     });
+    a.on('fullscreen', (on: boolean) => document.documentElement.classList.toggle('fullscreen', on));
     a.on('portal-status', (info: PortalInfo) => {
       this.portal = info;
       this.events.emit('portal', info);

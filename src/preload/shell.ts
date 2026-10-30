@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { FronttierAPI } from '../shared/api';
 
 const invoke = (channel: string) => (...args: unknown[]) => ipcRenderer.invoke(channel, ...args);
-const CHANNELS = new Set(['menu', 'net', 'ctx', 'open-tab', 'portal-event', 'portal-status', 'live-reload', 'toast']);
+const CHANNELS = new Set(['menu', 'net', 'ctx', 'open-tab', 'portal-event', 'portal-status', 'live-reload', 'toast', 'fullscreen']);
 
 const api: FronttierAPI = {
   platform: process.platform,
