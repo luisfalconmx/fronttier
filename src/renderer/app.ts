@@ -500,6 +500,10 @@ export class App {
       return;
     }
     if (url === this.tab.url) return;
+    // Pages that rewrite their URL by themselves would echo between panes
+    // forever (each viewport yields different coordinates), so in-page
+    // changes only count when they come from the pane the user drives.
+    if (inPage && pane !== this.leadPane()) return;
     this.setTabUrl(url);
     if (!this.settings.sync.nav) return;
     if (inPage) {
@@ -507,6 +511,12 @@ export class App {
         for (const p of this.panes) if (p !== pane && p.url !== url) p.send('spa-nav', url);
       }, 350);
     } else for (const p of this.panes) if (p !== pane && p.url !== url) p.load(url, true);
+  }
+
+  /** Pane with real user input in the last few seconds, else the primary one. */
+  private leadPane() {
+    const recent = this.panes.reduce<PaneView | null>((a, p) => (p.lastInput > (a?.lastInput ?? 0) ? p : a), null);
+    return recent && Date.now() - recent.lastInput < 5000 ? recent : this.primary();
   }
 
   onPaneTitle(pane: PaneView, title: string) {

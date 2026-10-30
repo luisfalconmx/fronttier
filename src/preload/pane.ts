@@ -21,6 +21,22 @@ const sync = createSync({
   hoverAt: (x, y) => toHost('hover-at', x, y),
 });
 
+// Tells the host which pane the user is driving, so only that pane's in-page
+// URL changes are mirrored (Google Maps rewrites its URL on every camera move).
+let lastInput = 0;
+for (const type of ['pointerdown', 'keydown', 'wheel', 'touchstart']) {
+  addEventListener(
+    type,
+    (e) => {
+      const now = Date.now();
+      if (!e.isTrusted || now - lastInput < 250) return;
+      lastInput = now;
+      toHost('user-input');
+    },
+    { capture: true, passive: true },
+  );
+}
+
 function whenReady(fn: () => void) {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn, { once: true });
   else fn();

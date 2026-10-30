@@ -28,6 +28,8 @@ export class PaneView {
   url = '';
   title = '';
   syncLoad = false;
+  /** Time of the last real user input inside this pane. */
+  lastInput = 0;
   vitals: Vitals = {};
   overflow = { overflow: false, amount: 0, count: 0 };
   private started = false;
@@ -128,6 +130,9 @@ export class PaneView {
       switch (e.channel) {
         case 'sync':
           this.app.broadcast(this, a as SyncEvent);
+          break;
+        case 'user-input':
+          this.lastInput = Date.now();
           break;
         case 'tool-result': {
           const w = this.toolWaiters.get(a);
