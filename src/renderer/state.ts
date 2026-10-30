@@ -40,6 +40,8 @@ export interface Settings {
   defaultPreset: string;
 }
 
+export const DEFAULT_GEO = { lat: 19.4326, lng: -99.1332 };
+
 export const DEFAULT_EMULATION: Emulation = {
   colorScheme: '',
   reducedMotion: '',
@@ -53,7 +55,7 @@ export const DEFAULT_EMULATION: Emulation = {
   cpu: 1,
   disableJS: false,
   disableCache: false,
-  geo: null,
+  geo: DEFAULT_GEO,
   vision: '',
 };
 

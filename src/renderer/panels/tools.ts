@@ -119,13 +119,38 @@ const PLACES: [string, number, number][] = [
   ['Tokio', 35.6762, 139.6503],
 ];
 
+/** Real position of this machine: macOS Location Services through the bundled
+ * helper, then Chromium's own provider, then an approximate IP lookup. */
+async function currentPosition(): Promise<{ lat: number; lng: number; source: string; note?: string }> {
+  const dev = await api().locateDevice();
+  if (dev.lat !== undefined && dev.lng !== undefined) return { lat: dev.lat, lng: dev.lng, source: `ubicación precisa, ±${Math.round(dev.accuracy ?? 0)} m` };
+  const note =
+    dev.error === 'denied' ? 'Permite “Fronttier Location” en Ajustes del Sistema → Privacidad y seguridad → Localización para obtener la ubicación precisa.'
+    : dev.error === 'disabled' ? 'Activa Localización en Ajustes del Sistema para obtener la ubicación precisa.'
+    : undefined;
+  try {
+    const p = await new Promise<GeolocationPosition>((ok, fail) => navigator.geolocation.getCurrentPosition(ok, fail, { enableHighAccuracy: true, timeout: 6000 }));
+    return { lat: p.coords.latitude, lng: p.coords.longitude, source: `sistema, ±${Math.round(p.coords.accuracy)} m` };
+  } catch {}
+  for (const url of ['https://get.geojs.io/v1/ip/geo.json', 'https://ipwho.is/']) {
+    const r = await api().fetchText(url);
+    if (!r.ok) continue;
+    try {
+      const d = JSON.parse(r.text);
+      const lat = Number(d.latitude), lng = Number(d.longitude);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng, source: `aproximada por IP${d.city ? ', ' + d.city : ''}`, note };
+    } catch {}
+  }
+  throw new Error('No se pudo obtener la ubicación actual');
+}
+
 export function emulationPanel(app: App) {
   const body = h('div');
   const render = () => {
     const e = app.settings.emu;
     const set = (patch: Partial<Emulation>) => (app.setEmu(patch), render());
-    const lat = h('input', { type: 'number', step: '0.0001', value: e.geo ? String(e.geo.lat) : '', placeholder: 'Latitud' });
-    const lng = h('input', { type: 'number', step: '0.0001', value: e.geo ? String(e.geo.lng) : '', placeholder: 'Longitud' });
+    const lat = h('input', { type: 'number', step: 'any', value: String(e.geo.lat), placeholder: 'Latitud' });
+    const lng = h('input', { type: 'number', step: 'any', value: String(e.geo.lng), placeholder: 'Longitud' });
     const locale = h('input', { type: 'text', list: 'locales', value: e.locale, placeholder: 'Idioma del sistema', onchange: () => set({ locale: locale.value.trim() }) });
     const tz = h('input', { type: 'text', list: 'zones', value: e.timezone, placeholder: 'Zona horaria del sistema', onchange: () => set({ timezone: tz.value.trim() }) });
     clear(
@@ -145,8 +170,26 @@ export function emulationPanel(app: App) {
       section('Idioma y región', field('Idioma (navigator.language y Accept-Language)', locale), field('Zona horaria', tz)),
       section(
         'Geolocalización',
-        h('div', { class: 'row' }, lat, lng, h('button', { class: 'btn small', onclick: () => set({ geo: lat.value && lng.value ? { lat: Number(lat.value), lng: Number(lng.value) } : null }) }, 'Aplicar')),
-        h('div', { class: 'chips' }, PLACES.map(([n, la, lo]) => h('button', { class: 'chip' + (e.geo?.lat === la ? ' on' : ''), onclick: () => set({ geo: { lat: la, lng: lo } }) }, n)), h('button', { class: 'chip', onclick: () => set({ geo: null }) }, 'Real')),
+        h('p', { class: 'muted small' }, 'Todos los paneles reciben esta ubicación simulada; no requiere API key de Google.'),
+        h('div', { class: 'row' }, lat, lng, h('button', { class: 'btn small', onclick: () => {
+          const la = Number(lat.value), lo = Number(lng.value);
+          if (lat.value && lng.value && Math.abs(la) <= 90 && Math.abs(lo) <= 180) set({ geo: { lat: la, lng: lo } });
+        } }, 'Aplicar')),
+        h('div', { class: 'row' }, h('button', { class: 'btn small', onclick: async (ev: MouseEvent) => {
+          const btn = ev.currentTarget as HTMLButtonElement;
+          btn.disabled = true;
+          btn.textContent = 'Obteniendo ubicación…';
+          try {
+            const pos = await currentPosition();
+            set({ geo: { lat: Math.round(pos.lat * 1e6) / 1e6, lng: Math.round(pos.lng * 1e6) / 1e6 } });
+            app.toast(`Ubicación actual aplicada (${pos.source}).${pos.note ? ' ' + pos.note : ''}`);
+          } catch (err: any) {
+            btn.disabled = false;
+            btn.textContent = 'Obtener ubicación actual';
+            app.toast(err.message, 'error');
+          }
+        } }, 'Obtener ubicación actual')),
+        h('div', { class: 'chips' }, PLACES.map(([n, la, lo]) => h('button', { class: 'chip' + (e.geo.lat === la && e.geo.lng === lo ? ' on' : ''), onclick: () => set({ geo: { lat: la, lng: lo } }) }, n))),
       ),
       section(
         'Red y CPU',

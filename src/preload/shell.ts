@@ -31,6 +31,7 @@ const api: FronttierAPI = {
   pickImage: invoke('pick-image') as FronttierAPI['pickImage'],
   metrics: invoke('metrics') as FronttierAPI['metrics'],
   getCookies: invoke('get-cookies') as FronttierAPI['getCookies'],
+  locateDevice: invoke('locate-device') as FronttierAPI['locateDevice'],
   openExternal: invoke('open-external') as FronttierAPI['openExternal'],
   saveRecording: invoke('save-recording') as FronttierAPI['saveRecording'],
   on(channel, cb) {

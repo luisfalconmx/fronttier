@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { SessionFlags, SyncEvent } from '../shared/types';
 import { cdp, emulate, ensureAttached, getWC, onNetwork } from './cdp';
 import { serveFolder, watchFolder } from './local';
+import { locateDevice } from './locate';
 import { buildMenu } from './menu';
 import { Portal } from './portal';
 
@@ -272,6 +273,7 @@ function registerIpc() {
     const processes = app.getAppMetrics().map((m) => ({ type: m.type, mb: Math.round(m.memory.workingSetSize / 1024) }));
     return { totalMB: processes.reduce((a, p) => a + p.mb, 0), processes };
   });
+  h('locate-device', () => locateDevice());
   h('get-cookies', (_e, url: string) => session.fromPartition(PARTITION).cookies.get({ url }));
   h('open-external', (_e, url: string) => {
     if (/^https?:\/\//.test(url)) shell.openExternal(url);

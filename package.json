@@ -40,7 +40,17 @@
     },
     "files": [
       "dist/**/*",
+      "!dist/native",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "dist/native",
+        "to": "native",
+        "filter": [
+          "**/*"
+        ]
+      }
     ],
     "asar": true,
     "electronLanguages": [

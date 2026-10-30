@@ -69,7 +69,7 @@ export class App {
     const saved = (await api().settingsGet()).app as Partial<Settings> | undefined;
     if (saved) {
       const d = defaultSettings();
-      this.settings = { ...d, ...saved, emu: { ...DEFAULT_EMULATION, ...saved.emu }, sync: { ...d.sync, ...saved.sync } };
+      this.settings = { ...d, ...saved, emu: { ...DEFAULT_EMULATION, ...saved.emu, geo: saved.emu?.geo ?? DEFAULT_EMULATION.geo }, sync: { ...d.sync, ...saved.sync } };
       if (!this.settings.tabs?.length) this.settings.tabs = d.tabs;
     }
     this.tab = this.settings.tabs.find((t) => t.id === this.settings.activeTab) ?? this.settings.tabs[0];

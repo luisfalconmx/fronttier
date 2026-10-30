@@ -5,6 +5,7 @@ import type { EmulatePayload, NetRequest, NetSummary, NetworkPreset } from '../s
 
 const attached = new Set<number>();
 const lastEmulation = new Map<number, string>();
+const geoScript = new Map<number, string>();
 
 interface NetState {
   reqs: Map<string, NetRequest>;
@@ -105,6 +106,7 @@ export async function ensureAttached(id: number) {
     attached.delete(id);
     net.delete(id);
     lastEmulation.delete(id);
+    geoScript.delete(id);
   });
   wc.on('did-start-navigation', (d) => {
     if (d.isMainFrame && !d.isSameDocument) resetNetwork(id);
@@ -133,6 +135,55 @@ const NETWORK: Record<NetworkPreset, { offline: boolean; latency: number; downlo
   slow3g: { offline: false, latency: 2000, downloadThroughput: (400 * 1024) / 8, uploadThroughput: (400 * 1024) / 8 },
   offline: { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 },
 };
+
+// Pages that ask for the position while loading (Google Maps on a mobile UA)
+// can reach Chromium's real provider before the CDP override lands in a fresh
+// renderer, and that request never settles. This shim answers from the page's
+// own realm before any page script runs; re-running it just moves the position.
+function geoShim(lat: number, lng: number) {
+  return `(() => {
+  const KEY = Symbol.for('fronttier.geo');
+  if (window[KEY]) return window[KEY](${lat}, ${lng});
+  if (!navigator.geolocation) return;
+  let cur = { lat: ${lat}, lng: ${lng} };
+  const watchers = new Map();
+  let nextId = 1;
+  const make = (proto, props) => {
+    const o = Object.create(proto);
+    for (const k in props) Object.defineProperty(o, k, { value: props[k], enumerable: k !== 'toJSON' });
+    return o;
+  };
+  const position = () => {
+    const c = { latitude: cur.lat, longitude: cur.lng, accuracy: 30, altitude: null, altitudeAccuracy: null, heading: null, speed: null };
+    const timestamp = Date.now();
+    const coords = make(GeolocationCoordinates.prototype, { ...c, toJSON: () => c });
+    return make(GeolocationPosition.prototype, { coords, timestamp, toJSON: () => ({ coords: c, timestamp }) });
+  };
+  const fire = (ok) => setTimeout(() => ok(position()), 0);
+  const methods = {
+    getCurrentPosition(ok) { if (typeof ok === 'function') fire(ok); },
+    watchPosition(ok) {
+      const id = nextId++;
+      if (typeof ok === 'function') (watchers.set(id, ok), fire(ok));
+      return id;
+    },
+    clearWatch(id) { watchers.delete(id); },
+  };
+  const proto = Object.getPrototypeOf(navigator.geolocation);
+  for (const k in methods) Object.defineProperty(proto, k, { value: methods[k], writable: true, configurable: true });
+  Object.defineProperty(window, KEY, { value: (lat, lng) => { cur = { lat, lng }; watchers.forEach(fire); } });
+})();`;
+}
+
+async function setGeo(id: number, geo: { lat: number; lng: number }) {
+  await quiet(id, 'Emulation.setGeolocationOverride', { latitude: geo.lat, longitude: geo.lng, accuracy: 30 });
+  const source = geoShim(geo.lat, geo.lng);
+  const prev = geoScript.get(id);
+  if (prev) await quiet(id, 'Page.removeScriptToEvaluateOnNewDocument', { identifier: prev });
+  const added = (await quiet(id, 'Page.addScriptToEvaluateOnNewDocument', { source })) as { identifier: string } | undefined;
+  if (added) geoScript.set(id, added.identifier);
+  await quiet(id, 'Runtime.evaluate', { expression: source });
+}
 
 export async function emulate(id: number, p: EmulatePayload, defaultUA: string) {
   // Skip identical re-applies (resizes fire often) to keep CDP traffic low.
@@ -172,8 +223,10 @@ export async function emulate(id: number, p: EmulatePayload, defaultUA: string) 
   await quiet(id, 'Emulation.setCPUThrottlingRate', { rate: Math.max(1, emu.cpu || 1) });
   await quiet(id, 'Emulation.setScriptExecutionDisabled', { value: emu.disableJS });
   await quiet(id, 'Network.setCacheDisabled', { cacheDisabled: emu.disableCache });
-  if (emu.geo) await quiet(id, 'Emulation.setGeolocationOverride', { latitude: emu.geo.lat, longitude: emu.geo.lng, accuracy: 30 });
-  else await quiet(id, 'Emulation.clearGeolocationOverride');
+  // Never clear: without the override Chromium falls back to Google's network
+  // location service, which needs an API key and fails in every pane.
+  const geo = emu.geo ?? { lat: 19.4326, lng: -99.1332 };
+  await setGeo(id, geo);
   await quiet(id, 'Emulation.setEmulatedVisionDeficiency', { type: emu.vision || 'none' });
   const sa = pane.safeArea ?? { top: 0, right: 0, bottom: 0, left: 0 };
   await quiet(id, 'Emulation.setSafeAreaInsetsOverride', { insets: { top: sa.top, left: sa.left, bottom: sa.bottom, right: sa.right } });

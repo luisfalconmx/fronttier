@@ -61,7 +61,9 @@ export interface Emulation {
   cpu: number;
   disableJS: boolean;
   disableCache: boolean;
-  geo: { lat: number; lng: number } | null;
+  /** Always overridden: Electron has no Google API key for Chromium's network
+   * location provider, so the "real" position never resolves. */
+  geo: { lat: number; lng: number };
   /** CDP vision deficiency, applied by Chromium itself. */
   vision: string;
 }

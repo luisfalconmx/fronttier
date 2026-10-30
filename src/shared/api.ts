@@ -41,6 +41,8 @@ export interface FronttierAPI {
   pickImage(): Promise<string | null>;
   metrics(): Promise<MemoryReport>;
   getCookies(url: string): Promise<{ name: string; value: string; domain?: string; path?: string; secure?: boolean; httpOnly?: boolean; expirationDate?: number }[]>;
+  /** Position from the OS location service (macOS only for now). */
+  locateDevice(): Promise<{ lat?: number; lng?: number; accuracy?: number; error?: string }>;
   openExternal(url: string): Promise<void>;
   saveRecording(buffer: ArrayBuffer): Promise<string | null>;
   on(channel: string, cb: (...args: any[]) => void): () => void;
