@@ -1,0 +1,72 @@
+// Bundles every process of the app with esbuild into dist/.
+import { build } from 'esbuild';
+import { cpSync, mkdirSync, rmSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const dev = process.argv.includes('--dev');
+const out = join(root, 'dist');
+const require = createRequire(import.meta.url);
+
+rmSync(out, { recursive: true, force: true });
+mkdirSync(join(out, 'renderer'), { recursive: true });
+mkdirSync(join(out, 'vendor'), { recursive: true });
+
+const common = {
+  bundle: true,
+  minify: !dev,
+  sourcemap: dev ? 'inline' : false,
+  target: 'chrome140',
+  logLevel: 'info',
+  legalComments: 'none',
+};
+
+await Promise.all([
+  build({
+    ...common,
+    entryPoints: [join(root, 'src/main/index.ts')],
+    outfile: join(out, 'main.js'),
+    platform: 'node',
+    format: 'cjs',
+    target: 'node22',
+    external: ['electron', 'bufferutil', 'utf-8-validate'],
+  }),
+  build({
+    ...common,
+    entryPoints: [join(root, 'src/preload/shell.ts')],
+    outfile: join(out, 'preload-shell.js'),
+    platform: 'browser',
+    format: 'cjs',
+    external: ['electron'],
+  }),
+  build({
+    ...common,
+    entryPoints: [join(root, 'src/preload/pane.ts')],
+    outfile: join(out, 'preload-pane.js'),
+    platform: 'browser',
+    format: 'cjs',
+    external: ['electron'],
+  }),
+  build({
+    ...common,
+    entryPoints: [join(root, 'src/portal/client.ts')],
+    outfile: join(out, 'portal-client.js'),
+    platform: 'browser',
+    format: 'iife',
+  }),
+  build({
+    ...common,
+    entryPoints: [join(root, 'src/renderer/main.ts')],
+    outfile: join(out, 'renderer/app.js'),
+    platform: 'browser',
+    format: 'iife',
+  }),
+]);
+
+cpSync(join(root, 'src/renderer/index.html'), join(out, 'renderer/index.html'));
+cpSync(join(root, 'src/renderer/styles.css'), join(out, 'renderer/styles.css'));
+cpSync(require.resolve('axe-core/axe.min.js'), join(out, 'vendor/axe.min.js'));
+cpSync(require.resolve('axe-core/locales/es.json'), join(out, 'vendor/axe.es.json'));
+console.log('Build listo en dist/');
