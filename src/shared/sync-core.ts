@@ -3,7 +3,7 @@
 // found in every pane even when layouts differ between breakpoints.
 import type { SyncEvent, SyncFlags } from './types';
 
-export const OVERLAY_TAG = 'TESSERA-OVERLAY';
+export const OVERLAY_TAG = 'FRONTTIER-OVERLAY';
 
 export function isOurs(el: Element | null): boolean {
   for (let n: Element | null = el; n; n = n.parentElement) if (n.tagName === OVERLAY_TAG) return true;

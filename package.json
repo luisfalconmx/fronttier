@@ -1,11 +1,11 @@
 {
-  "name": "tessera",
-  "productName": "Tessera",
+  "name": "fronttier",
+  "productName": "Fronttier",
   "version": "1.0.0",
   "description": "Navegador multipanel para desarrollo web responsivo, accesible y rápido",
   "main": "dist/main.js",
   "author": "luisfalconmx <luisfalconmx@gmail.com>",
-  "homepage": "https://github.com/luisfalconmx/tessera",
+  "homepage": "https://github.com/luisfalconmx/fronttier",
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -31,8 +31,8 @@
     "ws": "^8.22.0"
   },
   "build": {
-    "appId": "dev.tessera.browser",
-    "productName": "Tessera",
+    "appId": "dev.fronttier.browser",
+    "productName": "Fronttier",
     "copyright": "MIT",
     "directories": {
       "output": "release",
@@ -72,11 +72,11 @@
       "allowElevation": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "Tessera",
-      "artifactName": "Tessera-Setup-${version}-win-${arch}.${ext}"
+      "shortcutName": "Fronttier",
+      "artifactName": "Fronttier-Setup-${version}-win-${arch}.${ext}"
     },
     "portable": {
-      "artifactName": "Tessera-Portable-${version}-win-${arch}.exe",
+      "artifactName": "Fronttier-Portable-${version}-win-${arch}.exe",
       "requestExecutionLevel": "user"
     },
     "mac": {
@@ -87,7 +87,7 @@
       "category": "public.app-category.developer-tools",
       "identity": null,
       "hardenedRuntime": false,
-      "artifactName": "Tessera-${version}-mac-${arch}.${ext}"
+      "artifactName": "Fronttier-${version}-mac-${arch}.${ext}"
     },
     "linux": {
       "target": [
@@ -97,7 +97,7 @@
       "category": "Development",
       "maintainer": "luisfalconmx <luisfalconmx@gmail.com>",
       "synopsis": "Navegador multipanel para desarrollo web",
-      "artifactName": "Tessera-${version}-linux-${arch}.${ext}"
+      "artifactName": "Fronttier-${version}-linux-${arch}.${ext}"
     },
     "toolsets": {
       "nsis": "1.2.1",

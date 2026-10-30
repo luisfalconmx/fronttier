@@ -1,11 +1,11 @@
 // Injected by Portal into pages served to real devices: mirrors interactions
-// with the Tessera app over a WebSocket.
+// with the Fronttier app over a WebSocket.
 import { createSync } from '../shared/sync-core';
 import type { SyncEvent } from '../shared/types';
 
 (() => {
-  if ((window as any).__tesseraPortal) return;
-  (window as any).__tesseraPortal = true;
+  if ((window as any).__fronttierPortal) return;
+  (window as any).__fronttierPortal = true;
   const flags = { scroll: true, click: true, input: true, hover: false, keys: true, nav: true };
   let ws: WebSocket | null = null;
   let badge: HTMLElement | null = null;
@@ -19,16 +19,16 @@ import type { SyncEvent } from '../shared/types';
   function setBadge(online: boolean) {
     if (!document.body) return;
     if (!badge) {
-      badge = document.createElement('tessera-overlay');
+      badge = document.createElement('fronttier-overlay');
       badge.style.cssText = 'position:fixed;z-index:2147483647;bottom:8px;right:8px;font:600 11px/1 system-ui,sans-serif;padding:5px 8px;border-radius:12px;color:#fff;pointer-events:none;opacity:.85';
       document.body.appendChild(badge);
     }
-    badge.textContent = online ? '● Tessera Portal' : '○ Portal desconectado';
+    badge.textContent = online ? '● Fronttier Portal' : '○ Portal desconectado';
     badge.style.background = online ? '#6d28d9' : '#6b7280';
   }
 
   function connect() {
-    ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/__tessera/ws');
+    ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/__fronttier/ws');
     ws.onopen = () => {
       setBadge(true);
       send({ t: 'nav', url: location.pathname + location.search + location.hash });

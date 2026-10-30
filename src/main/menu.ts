@@ -53,7 +53,7 @@ export function buildMenu(win: BrowserWindow) {
         item('Sincronizar scroll', 'toggle-sync-scroll'),
         item('Tema claro/oscuro', 'toggle-dark'),
         { type: 'separator' },
-        { label: 'Herramientas de desarrollo de Tessera', accelerator: 'CmdOrCtrl+Alt+I', click: () => win.webContents.toggleDevTools() },
+        { label: 'Herramientas de desarrollo de Fronttier', accelerator: 'CmdOrCtrl+Alt+I', click: () => win.webContents.toggleDevTools() },
       ],
     },
     {

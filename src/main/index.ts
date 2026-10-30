@@ -10,7 +10,7 @@ import { Portal } from './portal';
 // The Windows portable build keeps its data next to the .exe so it never
 // writes to the user profile of a machine without admin rights.
 if (process.env.PORTABLE_EXECUTABLE_DIR) {
-  app.setPath('userData', join(process.env.PORTABLE_EXECUTABLE_DIR, 'TesseraData'));
+  app.setPath('userData', join(process.env.PORTABLE_EXECUTABLE_DIR, 'FronttierData'));
 }
 
 // Memory: no spare renderer, no spellchecker, inactive tabs are unloaded by
@@ -19,7 +19,7 @@ app.commandLine.appendSwitch('disable-features', 'SpareRendererForSitePerProcess
 // Panes showing the same site share one renderer process instead of one each.
 app.commandLine.appendSwitch('process-per-site');
 
-const PARTITION = 'persist:tessera';
+const PARTITION = 'persist:fronttier';
 const DIST = __dirname;
 const PANE_PRELOAD = join(DIST, 'preload-pane.js');
 const settingsFile = () => join(app.getPath('userData'), 'settings.json');
@@ -59,7 +59,7 @@ const portal = new Portal(
 
 function configureSession() {
   const ses = session.fromPartition(PARTITION);
-  defaultUA = ses.getUserAgent().replace(/ Electron\/\S+/, '').replace(/ tessera\/\S+/i, '');
+  defaultUA = ses.getUserAgent().replace(/ Electron\/\S+/, '').replace(/ fronttier\/\S+/i, '');
   ses.setUserAgent(defaultUA);
   ses.setSpellCheckerEnabled(false);
   const allowed = new Set(['geolocation', 'fullscreen', 'clipboard-read', 'clipboard-sanitized-write', 'notifications', 'media', 'pointerLock', 'idle-detection', 'window-management']);
@@ -135,7 +135,7 @@ function createWindow() {
     ...bounds,
     minWidth: 900,
     minHeight: 560,
-    title: 'Tessera',
+    title: 'Fronttier',
     backgroundColor: '#14161a',
     show: false,
     webPreferences: {
@@ -219,7 +219,7 @@ function registerIpc() {
     return r.filePath;
   });
   h('save-recording', async (_e, buf: ArrayBuffer) => {
-    const r = await dialog.showSaveDialog(win!, { defaultPath: join(app.getPath('videos'), `tessera-${Date.now()}.webm`), filters: [{ name: 'WebM', extensions: ['webm'] }] });
+    const r = await dialog.showSaveDialog(win!, { defaultPath: join(app.getPath('videos'), `fronttier-${Date.now()}.webm`), filters: [{ name: 'WebM', extensions: ['webm'] }] });
     if (r.canceled || !r.filePath) return null;
     writeFileSync(r.filePath, Buffer.from(buf));
     return r.filePath;

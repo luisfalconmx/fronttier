@@ -1,6 +1,6 @@
 import { api, toast } from './dom';
 
-/** Records the Tessera window (all panes) to a WebM file. */
+/** Records the Fronttier window (all panes) to a WebM file. */
 export class Recorder {
   private rec: MediaRecorder | null = null;
   private chunks: Blob[] = [];

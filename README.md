@@ -1,4 +1,6 @@
-# Tessera
+# Fronttier
+
+Repositorio: https://github.com/luisfalconmx/fronttier
 
 Navegador para desarrollo web que muestra un mismo sitio en varios dispositivos a la vez. Lo que haces en un panel (scroll, clics, formularios, hover, teclas, navegación) se repite en todos los demás, y trae herramientas de accesibilidad, SEO, rendimiento y depuración integradas.
 
@@ -12,20 +14,20 @@ Los instaladores se generan en la carpeta `release/` (ver [Compilar los instalad
 
 | Sistema | Archivo | Cómo instalar |
 | --- | --- | --- |
-| **Windows 11 (instalador)** | `Tessera-Setup-1.0.0-win-x64.exe` | Doble clic y sigue el asistente. Se instala **para tu usuario** (no pide permisos de administrador) y crea accesos en el escritorio y el menú Inicio. |
-| **Windows (portable)** | `Tessera-Portable-1.0.0-win-x64.exe` | No se instala: copia el `.exe` a cualquier carpeta o USB y ábrelo. Funciona en equipos **sin permisos de administrador**. Guarda sus datos en una carpeta `TesseraData` junto al `.exe`. |
-| **macOS** (Apple Silicon e Intel) | `Tessera-1.0.0-mac-arm64.dmg` / `Tessera-1.0.0-mac-x64.dmg` | Abre el `.dmg` y arrastra **Tessera** a **Aplicaciones**. |
-| **Linux** | `Tessera-1.0.0-linux-x86_64.AppImage` o `Tessera-1.0.0-linux-amd64.deb` | AppImage: `chmod +x Tessera-*.AppImage` y ejecútalo. Debian/Ubuntu: `sudo apt install ./Tessera-*.deb`. |
+| **Windows 11 (instalador)** | `Fronttier-Setup-1.0.0-win-x64.exe` | Doble clic y sigue el asistente. Se instala **para tu usuario** (no pide permisos de administrador) y crea accesos en el escritorio y el menú Inicio. |
+| **Windows (portable)** | `Fronttier-Portable-1.0.0-win-x64.exe` | No se instala: copia el `.exe` a cualquier carpeta o USB y ábrelo. Funciona en equipos **sin permisos de administrador**. Guarda sus datos en una carpeta `FronttierData` junto al `.exe`. |
+| **macOS** (Apple Silicon e Intel) | `Fronttier-1.0.0-mac-arm64.dmg` / `Fronttier-1.0.0-mac-x64.dmg` | Abre el `.dmg` y arrastra **Fronttier** a **Aplicaciones**. |
+| **Linux** | `Fronttier-1.0.0-linux-x86_64.AppImage` o `Fronttier-1.0.0-linux-amd64.deb` | AppImage: `chmod +x Fronttier-*.AppImage` y ejecútalo. Debian/Ubuntu: `sudo apt install ./Fronttier-*.deb`. |
 
 ### Primer arranque: avisos de seguridad
 
 Los instaladores **no están firmados digitalmente** (firmar requiere certificados de pago de Apple y Microsoft), así que el sistema mostrará un aviso la primera vez:
 
 - **Windows (SmartScreen):** “Windows protegió tu PC” → **Más información** → **Ejecutar de todas formas**.
-- **macOS (Gatekeeper):** “No se puede abrir porque es de un desarrollador no identificado” → en Finder, clic derecho sobre Tessera → **Abrir** → **Abrir**. Si dice que la app “está dañada”, ejecuta una vez:
+- **macOS (Gatekeeper):** “No se puede abrir porque es de un desarrollador no identificado” → en Finder, clic derecho sobre Fronttier → **Abrir** → **Abrir**. Si dice que la app “está dañada”, ejecuta una vez:
 
   ```bash
-  xattr -cr /Applications/Tessera.app
+  xattr -cr /Applications/Fronttier.app
   ```
 
 - **Linux (AppImage):** si al hacer doble clic no abre, márcalo como ejecutable (`chmod +x`). Usa un runtime estático, así que no necesita `libfuse2`.
@@ -34,7 +36,7 @@ Los instaladores **no están firmados digitalmente** (firmar requiere certificad
 
 ## Uso rápido
 
-1. Abre Tessera, escribe una URL (`localhost:3000`, `mi-sitio.com`…) y pulsa **Enter**.
+1. Abre Fronttier, escribe una URL (`localhost:3000`, `mi-sitio.com`…) y pulsa **Enter**.
 2. Cada panel es un dispositivo. Usa **+ Panel** para agregar dispositivos, conjuntos de breakpoints (Tailwind, Bootstrap, Material) o tamaños personalizados.
 3. Interactúa en cualquier panel: los demás te siguen.
 4. Abre las herramientas en la barra lateral derecha (iconos) o con **Ctrl/Cmd + K**.
@@ -93,7 +95,7 @@ Los instaladores **no están firmados digitalmente** (firmar requiere certificad
 ### Rendimiento
 - **Core Web Vitals** (LCP, CLS, INP, FCP, TTFB) bajo cada panel, con colores según los umbrales de Google.
 - Comparación con **datos reales de usuarios (CrUX)** con una clave de API gratuita (Ajustes).
-- Medidor de **RAM** de Tessera en la barra de estado y desglose por proceso.
+- Medidor de **RAM** de Fronttier en la barra de estado y desglose por proceso.
 
 ### SEO y redes sociales
 - **Meta:** título y descripción con longitud, canonical, viewport, idioma, robots, favicons, hreflang, Open Graph, Twitter/X, **JSON-LD** (validado), **robots.txt** (indica si la ruta actual está bloqueada y qué sitemaps declara) y **Web App Manifest**. Los problemas se detectan solos.
@@ -132,7 +134,7 @@ Los instaladores **no están firmados digitalmente** (firmar requiere certificad
 
 ## Por qué Electron y cómo se mantiene ligero
 
-Las funciones clave (emular DPR, user agent, media features, red, CPU, visión, Core Web Vitals, árbol de accesibilidad) dependen del **protocolo de DevTools de Chromium**. Las alternativas “ligeras”, como Tauri, usan el motor web del sistema (WebKit en macOS y Linux, WebView2 en Windows): no ofrecen esas APIs y renderizarían distinto en cada sistema, algo inaceptable en una herramienta de pruebas. Por eso Tessera usa Electron y ahorra memoria de otras formas:
+Las funciones clave (emular DPR, user agent, media features, red, CPU, visión, Core Web Vitals, árbol de accesibilidad) dependen del **protocolo de DevTools de Chromium**. Las alternativas “ligeras”, como Tauri, usan el motor web del sistema (WebKit en macOS y Linux, WebView2 en Windows): no ofrecen esas APIs y renderizarían distinto en cada sistema, algo inaceptable en una herramienta de pruebas. Por eso Fronttier usa Electron y ahorra memoria de otras formas:
 
 - **Los paneles del mismo sitio comparten un solo proceso** (`process-per-site`): con 3 paneles, la RAM bajó de ~790 MB a ~590 MB en las pruebas, y el ahorro crece con cada panel.
 - **Las pestañas inactivas se descargan por completo**: solo la pestaña visible tiene paneles vivos.
@@ -180,7 +182,6 @@ Los archivos quedan en `release/`. Notas:
 
 - Lo más fiable es compilar cada sistema **en ese mismo sistema**. El workflow `.github/workflows/release.yml` lo hace solo en GitHub Actions al publicar una etiqueta `v*` (o manualmente desde la pestaña *Actions*) y deja los cuatro artefactos descargables.
 - Desde macOS (incluido Apple Silicon) se generan también los de Windows y Linux, sin Wine ni Rosetta, gracias a los toolsets nativos configurados en `package.json` (`build.toolsets`). En ese caso el `.exe` no lleva incrustado el ícono ni los metadatos de versión (`signAndEditExecutable: false`), porque eso requiere herramientas de Windows; si quieres incluirlos, compila en Windows o con el workflow.
-- El campo `homepage` de `package.json` (obligatorio para el `.deb`) es provisional: cámbialo por la URL real del proyecto.
 
 ### Estructura
 
@@ -197,7 +198,7 @@ scripts/      build.mjs (esbuild) y make-icon.mjs
 
 ### Seguridad
 
-Cada panel corre con `contextIsolation`, `sandbox` y sin Node. Los scripts de Tessera viven en un *isolated world*, así que la página no puede acceder a ellos. Las opciones que relajan la seguridad (desactivar CSP, abrir CORS) están apagadas por defecto y se indican en la barra de estado mientras están activas.
+Cada panel corre con `contextIsolation`, `sandbox` y sin Node. Los scripts de Fronttier viven en un *isolated world*, así que la página no puede acceder a ellos. Las opciones que relajan la seguridad (desactivar CSP, abrir CORS) están apagadas por defecto y se indican en la barra de estado mientras están activas.
 
 ## Limitaciones conocidas
 

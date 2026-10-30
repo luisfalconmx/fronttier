@@ -47,7 +47,7 @@ export class PaneView {
     public cfg: PaneConfig,
   ) {
     this.webview = document.createElement('webview') as WebviewTag;
-    this.webview.setAttribute('partition', 'persist:tessera');
+    this.webview.setAttribute('partition', 'persist:fronttier');
     this.webview.setAttribute('webpreferences', 'contextIsolation=yes, spellcheck=no');
     if (cfg.ua) this.webview.setAttribute('useragent', cfg.ua);
     // Start blank so emulation (UA, DPR, viewport) is in place before the first real request.
@@ -198,7 +198,7 @@ export class PaneView {
     try {
       const info: { total: number; vh: number; vw: number; x: number; y: number } = await js(`(() => {
         const se = document.scrollingElement || document.documentElement;
-        window.__tesseraFixed = [...document.querySelectorAll('body *')].filter((e) => /fixed|sticky/.test(getComputedStyle(e).position));
+        window.__fronttierFixed = [...document.querySelectorAll('body *')].filter((e) => /fixed|sticky/.test(getComputedStyle(e).position));
         // visualViewport, not innerWidth: mobile pages that overflow are zoomed out.
         const vv = window.visualViewport;
         return { total: Math.min(se.scrollHeight, 16000), vh: vv ? vv.height : innerHeight, vw: vv ? vv.width : innerWidth, x: scrollX, y: scrollY };
@@ -210,7 +210,7 @@ export class PaneView {
       let last = -1;
       const ctx = canvas.getContext('2d')!;
       for (let y = 0; y < info.total; y += info.vh) {
-        const actual: number = await js(`(() => { scrollTo(0, ${y}); for (const e of window.__tesseraFixed) e.style.visibility = ${y > 0} ? 'hidden' : ''; return scrollY; })()`);
+        const actual: number = await js(`(() => { scrollTo(0, ${y}); for (const e of window.__fronttierFixed) e.style.visibility = ${y > 0} ? 'hidden' : ''; return scrollY; })()`);
         // Mobile pages wider than the viewport cannot scroll any further; stop there.
         if (actual <= last) break;
         last = actual;
@@ -236,7 +236,7 @@ export class PaneView {
       }
       return canvas.toDataURL('image/png');
     } finally {
-      await js(`(() => { for (const e of window.__tesseraFixed || []) e.style.visibility = ''; scrollTo(${restore.x}, ${restore.y}); })()`).catch(() => {});
+      await js(`(() => { for (const e of window.__fronttierFixed || []) e.style.visibility = ''; scrollTo(${restore.x}, ${restore.y}); })()`).catch(() => {});
       this.send('sync-flags', this.app.settings.sync);
     }
   }

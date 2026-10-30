@@ -11,8 +11,8 @@ import tls from 'node:tls';
 import { WebSocketServer, type WebSocket } from 'ws';
 import type { PortalInfo, SyncEvent } from '../shared/types';
 
-const CLIENT_PATH = '/__tessera/client.js';
-const WS_PATH = '/__tessera/ws';
+const CLIENT_PATH = '/__fronttier/client.js';
+const WS_PATH = '/__fronttier/ws';
 const STRIP = new Set(['content-security-policy', 'content-security-policy-report-only', 'x-frame-options', 'strict-transport-security', 'content-length']);
 
 function lanAddresses() {

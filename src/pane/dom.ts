@@ -76,7 +76,7 @@ export function el(tag: string, cls: string, style: Partial<CSSStyleDeclaration>
 
 /** Inject or remove a stylesheet into the page itself. */
 export function pageStyle(id: string, css: string | null) {
-  const elId = 'tessera-style-' + id;
+  const elId = 'fronttier-style-' + id;
   let s = document.getElementById(elId) as HTMLStyleElement | null;
   if (css === null) {
     s?.remove();
@@ -85,7 +85,7 @@ export function pageStyle(id: string, css: string | null) {
   if (!s) {
     s = document.createElement('style');
     s.id = elId;
-    s.setAttribute('data-tessera', '');
+    s.setAttribute('data-fronttier', '');
     (document.head || document.documentElement).appendChild(s);
   }
   s.textContent = css;

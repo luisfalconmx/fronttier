@@ -63,7 +63,7 @@ export class App {
   private sideTabs = h('nav', { class: 'side-tabs', 'aria-label': 'Herramientas' });
   private sideBody = h('div', { class: 'side-body' });
   private status = h('footer', { class: 'status' });
-  private ram = h('span', { class: 'ram', title: 'Memoria usada por Tessera' });
+  private ram = h('span', { class: 'ram', title: 'Memoria usada por Fronttier' });
 
   async init() {
     const saved = (await api().settingsGet()).app as Partial<Settings> | undefined;
@@ -208,7 +208,7 @@ export class App {
         'div',
         { class: 'start-card' },
         h('div', { class: 'logo' }, h('span'), h('span'), h('span'), h('span')),
-        h('h1', null, 'Tessera'),
+        h('h1', null, 'Fronttier'),
         h('p', { class: 'muted' }, 'Abre un sitio y míralo en varios dispositivos a la vez. Todo lo que hagas en un panel se refleja en los demás.'),
         input,
         h('div', { class: 'row center' }, h('button', { class: 'btn primary', onclick: () => this.navigate(input.value) }, 'Abrir'), h('button', { class: 'btn', onclick: () => this.runCommand('open-folder') }, icon('folder'), 'Abrir carpeta local')),
@@ -646,7 +646,7 @@ export class App {
           { label: 'Todos los paneles (página completa)', onclick: () => this.screenshotAll(true) },
           { label: 'Panel seleccionado (vista)', onclick: () => p && this.screenshotPane(p, false) },
           { label: 'Panel seleccionado (página completa)', onclick: () => p && this.screenshotPane(p, true) },
-          { label: 'Ventana de Tessera', onclick: async () => openEditor(await api().captureWindow(), 'tessera-ventana.png') },
+          { label: 'Ventana de Fronttier', onclick: async () => openEditor(await api().captureWindow(), 'fronttier-ventana.png') },
         ],
         () => close(),
       ),
@@ -927,7 +927,7 @@ export class App {
       c('toggle-rulers', 'Reglas', () => this.setTools({ rulers: !this.tools.rulers })),
       c('toggle-layout-debug', 'Depuración de layout', () => this.setTools({ layoutDebug: !this.tools.layoutDebug })),
       c('toggle-sync-scroll', 'Sincronizar scroll', () => this.setSync({ scroll: !this.settings.sync.scroll })),
-      c('toggle-dark', 'Tema claro/oscuro de Tessera', () => {
+      c('toggle-dark', 'Tema claro/oscuro de Fronttier', () => {
         this.settings.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
         this.applyTheme();
         this.save();

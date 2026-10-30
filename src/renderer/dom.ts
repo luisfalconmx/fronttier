@@ -1,12 +1,12 @@
-import type { TesseraAPI } from '../shared/api';
+import type { FronttierAPI } from '../shared/api';
 
 declare global {
   interface Window {
-    tessera: TesseraAPI;
+    fronttier: FronttierAPI;
   }
 }
 
-export const api = () => window.tessera;
+export const api = () => window.fronttier;
 
 type Child = Node | string | number | null | undefined | false | Child[];
 type Props = Record<string, any> & { class?: string; style?: string | Partial<CSSStyleDeclaration> };

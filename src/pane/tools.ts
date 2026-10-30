@@ -225,13 +225,13 @@ export function domChildren(sel?: string) {
   const root = sel ? find(sel) : document.documentElement;
   if (!root) return { children: [] };
   const children = Array.from(root.children)
-    .filter((c) => !isOurs(c) && !c.hasAttribute('data-tessera'))
+    .filter((c) => !isOurs(c) && !c.hasAttribute('data-fronttier'))
     .slice(0, 400)
     .map((c) => ({
       sel: selectorFor(c),
       tag: c.tagName.toLowerCase(),
       attrs: Array.from(c.attributes)
-        .filter((a) => !a.name.startsWith('data-tessera'))
+        .filter((a) => !a.name.startsWith('data-fronttier'))
         .slice(0, 12)
         .map((a) => [a.name, a.value.slice(0, 200)] as [string, string]),
       text: Array.from(c.childNodes)
@@ -284,8 +284,8 @@ const SAMPLE = {
   zip: '06600',
   company: 'Ejemplo S.A. de C.V.',
   url: 'https://example.com',
-  text: 'Texto de prueba generado por Tessera.',
-  password: 'Tessera#Prueba2026',
+  text: 'Texto de prueba generado por Fronttier.',
+  password: 'Fronttier#Prueba2026',
 };
 
 export function fillForms(email: string) {
@@ -344,7 +344,7 @@ export function fillForms(email: string) {
     else if (/state|estado|region|province/.test(hint)) v = SAMPLE.state;
     else if (/address|street|calle|direcci/.test(hint)) v = SAMPLE.street;
     else if (/company|organization|empresa/.test(hint)) v = SAMPLE.company;
-    else if (/search|buscar|query|\bq\b/.test(hint)) v = 'tessera';
+    else if (/search|buscar|query|\bq\b/.test(hint)) v = 'fronttier';
     if (f.maxLength > 0) v = v.slice(0, f.maxLength);
     setValue(f, v);
   }
@@ -394,7 +394,7 @@ export function reloadCSS() {
   const stamp = Date.now();
   document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]').forEach((l) => {
     const u = new URL(l.href, location.href);
-    u.searchParams.set('tessera-reload', String(stamp));
+    u.searchParams.set('fronttier-reload', String(stamp));
     const clone = l.cloneNode() as HTMLLinkElement;
     clone.href = u.href;
     clone.onload = () => l.remove();
@@ -423,5 +423,5 @@ export function reader() {
 }
 
 export function html() {
-  return '<!DOCTYPE html>\n' + document.documentElement.outerHTML.replace(/<tessera-overlay[^>]*><\/tessera-overlay>/g, '').replace(/<style id="tessera-style-[^"]*"[^>]*>[\s\S]*?<\/style>/g, '');
+  return '<!DOCTYPE html>\n' + document.documentElement.outerHTML.replace(/<fronttier-overlay[^>]*><\/fronttier-overlay>/g, '').replace(/<style id="fronttier-style-[^"]*"[^>]*>[\s\S]*?<\/style>/g, '');
 }

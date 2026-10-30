@@ -16,7 +16,7 @@ export function overflowCheck(mark: boolean): OverflowReport {
   const docEl = document.documentElement;
   const vw = docEl.clientWidth;
   const amount = Math.max(0, (document.scrollingElement || docEl).scrollWidth - vw);
-  document.querySelectorAll('[data-tessera-overflow]').forEach((e) => e.removeAttribute('data-tessera-overflow'));
+  document.querySelectorAll('[data-fronttier-overflow]').forEach((e) => e.removeAttribute('data-fronttier-overflow'));
   const offenders: string[] = [];
   if (amount > 0) {
     for (const e of Array.from(document.body?.querySelectorAll('*') ?? [])) {
@@ -34,8 +34,8 @@ export function overflowCheck(mark: boolean): OverflowReport {
       }
       if (clipped) continue;
       // Report the outermost offender only.
-      if (e.parentElement?.hasAttribute('data-tessera-overflow')) continue;
-      if (mark) e.setAttribute('data-tessera-overflow', '');
+      if (e.parentElement?.hasAttribute('data-fronttier-overflow')) continue;
+      if (mark) e.setAttribute('data-fronttier-overflow', '');
       offenders.push(selectorFor(e));
       if (offenders.length >= 50) break;
     }
@@ -172,17 +172,17 @@ export function applyTools(t: PaneToolsState) {
   pageStyle(
     'layout',
     t.layoutDebug
-      ? `*:not(tessera-overlay){outline:1px solid rgba(236,72,153,.55)!important;outline-offset:-1px!important}
+      ? `*:not(fronttier-overlay){outline:1px solid rgba(236,72,153,.55)!important;outline-offset:-1px!important}
          * *{outline-color:rgba(59,130,246,.55)!important} * * *{outline-color:rgba(16,185,129,.55)!important}
          * * * *{outline-color:rgba(245,158,11,.6)!important} * * * * *{outline-color:rgba(139,92,246,.6)!important}`
       : null,
   );
-  pageStyle('overflow', t.overflow ? `[data-tessera-overflow]{outline:2px solid #ef4444!important;outline-offset:-2px!important;background-color:rgba(239,68,68,.12)!important}` : null);
+  pageStyle('overflow', t.overflow ? `[data-fronttier-overflow]{outline:2px solid #ef4444!important;outline-offset:-2px!important;background-color:rgba(239,68,68,.12)!important}` : null);
   pageStyle('noimg', t.disableImages ? `img,picture,video,canvas,svg image{visibility:hidden!important}*{background-image:none!important}` : null);
   if (!prev || prev.disableCSS !== t.disableCSS) {
     for (const s of Array.from(document.styleSheets)) {
       const owner = s.ownerNode as Element | null;
-      if (owner?.hasAttribute?.('data-tessera')) continue;
+      if (owner?.hasAttribute?.('data-fronttier')) continue;
       s.disabled = t.disableCSS;
     }
   }
@@ -195,7 +195,7 @@ export function applyTools(t: PaneToolsState) {
 
   if (!observer && document.body) {
     observer = new MutationObserver((muts) => {
-      if (muts.every((m) => isOurs(m.target as Element) || (m.target as Element)?.id?.startsWith?.('tessera-style'))) return;
+      if (muts.every((m) => isOurs(m.target as Element) || (m.target as Element)?.id?.startsWith?.('fronttier-style'))) return;
       redraw();
     });
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });

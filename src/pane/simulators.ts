@@ -15,12 +15,12 @@ let dyslexiaTimer: ReturnType<typeof setInterval> | undefined;
 const originals = new Map<Text, string>();
 
 function svgFilter(id: string, inner: string) {
-  let svg = document.getElementById('tessera-svg-filters') as Element | null;
+  let svg = document.getElementById('fronttier-svg-filters') as Element | null;
   if (!svg) {
     svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     (svg as SVGSVGElement).style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
-    svg.id = 'tessera-svg-filters';
-    svg.setAttribute('data-tessera', '');
+    svg.id = 'fronttier-svg-filters';
+    svg.setAttribute('data-fronttier', '');
     svg.setAttribute('aria-hidden', 'true');
     document.documentElement.appendChild(svg);
   }
@@ -58,7 +58,7 @@ function dyslexia(on: boolean) {
 export function applySimulator(name: string) {
   pageStyle('sim', null);
   clearLayer('sim');
-  document.getElementById('tessera-svg-filters')?.remove();
+  document.getElementById('fronttier-svg-filters')?.remove();
   dyslexia(false);
   if (!name) return;
   const body = (filter: string) => pageStyle('sim', `body{filter:${filter}!important}`);
@@ -67,8 +67,8 @@ export function applySimulator(name: string) {
     case 'deuteranomaly':
     case 'tritanomaly':
     case 'achromatomaly':
-      svgFilter('tessera-sim', `<feColorMatrix type="matrix" values="${MATRICES[name]}"/>`);
-      body('url(#tessera-sim)');
+      svgFilter('fronttier-sim', `<feColorMatrix type="matrix" values="${MATRICES[name]}"/>`);
+      body('url(#fronttier-sim)');
       break;
     case 'cataracts':
       body('blur(2.2px) sepia(.35) brightness(1.08) contrast(.75)');
@@ -87,8 +87,8 @@ export function applySimulator(name: string) {
       break;
     }
     case 'astigmatism':
-      svgFilter('tessera-sim', '<feGaussianBlur in="SourceGraphic" stdDeviation="0.8" result="b"/><feOffset in="b" dx="3" dy="2" result="o"/><feComponentTransfer in="o" result="f"><feFuncA type="linear" slope="0.5"/></feComponentTransfer><feMerge><feMergeNode in="b"/><feMergeNode in="f"/></feMerge>');
-      body('url(#tessera-sim)');
+      svgFilter('fronttier-sim', '<feGaussianBlur in="SourceGraphic" stdDeviation="0.8" result="b"/><feOffset in="b" dx="3" dy="2" result="o"/><feComponentTransfer in="o" result="f"><feFuncA type="linear" slope="0.5"/></feComponentTransfer><feMerge><feMergeNode in="b"/><feMergeNode in="f"/></feMerge>');
+      body('url(#fronttier-sim)');
       break;
     case 'dyslexia':
       dyslexia(true);

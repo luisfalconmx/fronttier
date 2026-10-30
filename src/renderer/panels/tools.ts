@@ -95,7 +95,7 @@ export function performancePanel(app: App) {
 
   app.events.on('vitals', renderVitals);
   app.events.on('metrics', renderMem);
-  const el = h('div', null, section('Core Web Vitals por panel', vitals), section('Comparación con usuarios reales', h('div', { class: 'row' }, action('Consultar CrUX', loadCrux, 'btn small')), crux), section('Memoria de Tessera', mem));
+  const el = h('div', null, section('Core Web Vitals por panel', vitals), section('Comparación con usuarios reales', h('div', { class: 'row' }, action('Consultar CrUX', loadCrux, 'btn small')), crux), section('Memoria de Fronttier', mem));
   return {
     el,
     show: () => {
@@ -360,7 +360,7 @@ export function settingsPanel(app: App) {
       body,
       section(
         'General',
-        field('Tema de Tessera', select(s.theme, [['system', 'Sistema'], ['light', 'Claro'], ['dark', 'Oscuro']], (v) => (set('theme', v), app.applyTheme()))),
+        field('Tema de Fronttier', select(s.theme, [['system', 'Sistema'], ['light', 'Claro'], ['dark', 'Oscuro']], (v) => (set('theme', v), app.applyTheme()))),
         field('Buscador de la barra de direcciones', select(s.searchEngine, [['duckduckgo', 'DuckDuckGo'], ['google', 'Google'], ['bing', 'Bing'], ['ecosia', 'Ecosia']], (v) => set('searchEngine', v))),
         field('Paneles para pestañas nuevas', select(s.defaultPreset, Object.entries(PRESETS).map(([k, p]) => [k, p.label] as [string, string]), (v) => set('defaultPreset', v))),
         toggle('Emular densidad de píxeles (DPR)', s.emulateDpr, (v) => (set('emulateDpr', v), app.panes.forEach((p) => p.emulate())), 'Desactívalo para ahorrar memoria en equipos modestos.'),

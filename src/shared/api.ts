@@ -12,8 +12,8 @@ export interface MemoryReport {
   processes: { type: string; mb: number }[];
 }
 
-/** Bridge exposed by the shell preload as `window.tessera`. */
-export interface TesseraAPI {
+/** Bridge exposed by the shell preload as `window.fronttier`. */
+export interface FronttierAPI {
   platform: string;
   cdp(wcId: number, method: string, params?: Record<string, unknown>): Promise<any>;
   emulate(wcId: number, payload: EmulatePayload): Promise<void>;
