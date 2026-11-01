@@ -67,9 +67,7 @@ export class PaneView {
     );
     this.frame = h('div', { class: 'pane-frame' });
     this.foot = h('div', { class: 'pane-foot' });
-    const handle = h('div', { class: 'pane-resize', title: 'Arrastra para cambiar el ancho' });
-    handle.addEventListener('mousedown', (e) => this.startResize(e));
-    this.el = h('section', { class: 'pane', 'data-id': cfg.id }, this.head, h('div', { class: 'pane-body' }, this.frame, handle), this.foot);
+    this.el = h('section', { class: 'pane', 'data-id': cfg.id }, this.head, h('div', { class: 'pane-body' }, this.frame), this.foot);
     this.wire();
     this.layout();
     this.renderFoot();
@@ -252,6 +250,7 @@ export class PaneView {
     this.nameLabel.textContent = this.cfg.name;
     if (patch.ua !== undefined) this.webview.setAttribute('useragent', this.cfg.ua ?? '');
     this.layout();
+    if ('showVitals' in patch) this.renderFoot();
     this.emulate();
     this.app.persistTab();
     this.app.relayout();
@@ -309,13 +308,15 @@ export class PaneView {
       return h('span', { class: 'vital ' + grade(k, v), title: label }, h('b', null, k.toUpperCase()), v === undefined ? '—' : fmt(v));
     };
     const ms = (v: number) => (v < 1000 ? Math.round(v) + 'ms' : (v / 1000).toFixed(1) + 's');
+    const vitals = !!this.cfg.showVitals;
+    this.foot.classList.toggle('hidden', !vitals && !this.overflow.overflow);
     clear(
       this.foot,
-      chip('lcp', 'Largest Contentful Paint', ms),
-      chip('cls', 'Cumulative Layout Shift', (v) => v.toFixed(3)),
-      chip('inp', 'Interaction to Next Paint (peor interacción)', ms),
-      chip('fcp', 'First Contentful Paint', ms),
-      chip('ttfb', 'Time to First Byte', ms),
+      vitals ? chip('lcp', 'Largest Contentful Paint', ms) : null,
+      vitals ? chip('cls', 'Cumulative Layout Shift', (v) => v.toFixed(3)) : null,
+      vitals ? chip('inp', 'Interaction to Next Paint (peor interacción)', ms) : null,
+      vitals ? chip('fcp', 'First Contentful Paint', ms) : null,
+      vitals ? chip('ttfb', 'Time to First Byte', ms) : null,
       this.overflow.overflow
         ? h('button', { class: 'overflow-warn', title: 'Haz clic para resaltar los elementos que desbordan', onclick: () => this.app.setTools({ overflow: true }) }, icon('warn', 12), ` Desborde horizontal ${this.overflow.amount}px`)
         : null,
@@ -392,6 +393,7 @@ export class PaneView {
           { label: 'Captura de página completa', icon: 'fullPage', onclick: () => this.app.screenshotPane(this, true) },
           { label: 'DevTools de Chromium', icon: 'devtools', onclick: () => this.wcId && api().openDevTools(this.wcId) },
           { label: 'Recargar este panel', icon: 'reload', onclick: () => this.webview.reload() },
+          { label: c.showVitals ? 'Ocultar métricas (LCP, CLS…)' : 'Mostrar métricas (LCP, CLS…)', icon: 'vitals', onclick: () => this.update({ showVitals: !c.showVitals }) },
         ],
         () => close(),
       ),
@@ -412,29 +414,10 @@ export class PaneView {
         () => close(),
       ),
     );
-    const close = popover(anchor, body, { width: 300, align: 'right' });
-  }
-
-  private startResize(e: MouseEvent) {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startW = this.cfg.width;
-    const scale = this.app.scale;
-    document.body.classList.add('resizing');
-    const move = (ev: MouseEvent) => {
-      const w = Math.max(200, Math.round(startW + (ev.clientX - startX) / scale));
-      this.cfg.width = w;
-      this.cfg.deviceId = undefined;
-      this.layout();
-    };
-    const up = () => {
-      document.body.classList.remove('resizing');
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', up);
-      this.update({ name: this.cfg.deviceId ? this.cfg.name : /^\d+px$/.test(this.cfg.name) || !this.cfg.name ? `${this.cfg.width}px` : this.cfg.name });
-    };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
+    // While the menu is open the pane drops its red selection ring.
+    this.el.classList.add('menu-open');
+    anchor.blur();
+    const close = popover(anchor, body, { width: 300, align: 'right', beside: this.el, onClose: () => this.el.classList.remove('menu-open') });
   }
 
   destroy() {

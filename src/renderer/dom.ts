@@ -2,7 +2,7 @@ import {
   Accessibility, ArrowLeft, ArrowLeftToLine, ArrowRight, ArrowRightToLine, Bug, Camera, Check, Circle, CodeXml, Columns3, Command, Copy, CopyPlus,
   createElement, Database, Download, Ellipsis, Eye, FileText, Folder, Gauge, LayoutDashboard, ListTree, Maximize, MemoryStick, Moon, Network, PanelRight,
   Pin, Plus, QrCode, RefreshCcw, RotateCcwSquare, RotateCw, ScrollText, Search, Settings, Share2, ShieldOff, Smartphone, SquareCode, SquareTerminal, Star,
-  Sun, SunMoon, Tag, Trash2, TriangleAlert, X, Zap, ZoomIn, ZoomOut, type IconNode,
+  Sun, SunMoon, Monitor, Tag, Trash2, TriangleAlert, X, Zap, ZoomIn, ZoomOut, type IconNode,
 } from 'lucide';
 import type { FronttierAPI } from '../shared/api';
 
@@ -82,6 +82,8 @@ const ICONS: Record<string, IconNode> = {
   moon: Moon,
   sun: Sun,
   scheme: SunMoon,
+  system: Monitor,
+  vitals: Gauge,
   search: Search,
   copy: Copy,
   duplicate: CopyPlus,
@@ -152,15 +154,26 @@ export function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }
 
+let activeClose: (() => void) | undefined;
+
 /** Simple anchored dropdown. Closes on outside click or Escape. */
-export function popover(anchor: HTMLElement, content: HTMLElement, opts: { align?: 'left' | 'right'; width?: number } = {}) {
+export function popover(anchor: HTMLElement, content: HTMLElement, opts: { align?: 'left' | 'right'; width?: number; beside?: HTMLElement; onClose?: () => void } = {}) {
+  activeClose?.();
   document.querySelectorAll('.popover').forEach((p) => p.remove());
   const pop = h('div', { class: 'popover', role: 'dialog' }, content);
   if (opts.width) pop.style.width = opts.width + 'px';
   document.body.appendChild(pop);
   const r = anchor.getBoundingClientRect();
   const pw = pop.offsetWidth;
-  if (anchor.closest('.side-tabs')) {
+  const beside = opts.beside?.getBoundingClientRect();
+  const bounds = (opts.beside?.closest('.panes-wrap') ?? document.documentElement).getBoundingClientRect();
+  if (beside && (beside.right + 8 + pw <= bounds.right || beside.left - 8 - pw >= bounds.left)) {
+    // Next to the element (e.g. a pane), on whichever side has room; right first.
+    const top = Math.max(8, Math.min(r.top, innerHeight - pop.offsetHeight - 8));
+    pop.style.left = (beside.right + 8 + pw <= bounds.right ? beside.right + 8 : beside.left - 8 - pw) + 'px';
+    pop.style.top = top + 'px';
+    pop.style.maxHeight = innerHeight - top - 8 + 'px';
+  } else if (anchor.closest('.side-tabs')) {
     // Side rail: open beside the button, toward the panes.
     const top = Math.max(8, Math.min(r.top, innerHeight - pop.offsetHeight - 8));
     pop.style.left = Math.max(8, r.left - pw - 6) + 'px';
@@ -174,7 +187,10 @@ export function popover(anchor: HTMLElement, content: HTMLElement, opts: { align
     pop.style.maxHeight = innerHeight - r.bottom - 20 + 'px';
   }
   const close = () => {
+    if (!pop.isConnected) return;
     pop.remove();
+    opts.onClose?.();
+    if (activeClose === close) activeClose = undefined;
     document.removeEventListener('mousedown', outside, true);
     document.removeEventListener('keydown', esc, true);
   };
@@ -182,6 +198,7 @@ export function popover(anchor: HTMLElement, content: HTMLElement, opts: { align
     if (!pop.contains(e.target as Node) && !anchor.contains(e.target as Node)) close();
   };
   const esc = (e: KeyboardEvent) => e.key === 'Escape' && close();
+  activeClose = close;
   setTimeout(() => {
     document.addEventListener('mousedown', outside, true);
     document.addEventListener('keydown', esc, true);

@@ -57,6 +57,7 @@ export function createSync(opts: SyncOptions) {
   const quiet = (t: string, ms: number) => (quietUntil[t] = performance.now() + ms);
   const muted = (t: string) => (quietUntil[t] ?? 0) > performance.now();
   let scrollTimer: ReturnType<typeof setTimeout> | undefined;
+  let scrollTarget: Element | Document | null = null;
   let lastHover = 0;
 
   const emit = (ev: SyncEvent) => {
@@ -65,10 +66,13 @@ export function createSync(opts: SyncOptions) {
 
   const onScroll = (e: Event) => {
     if (!opts.flags().scroll || muted('scroll')) return;
-    const target = e.target as Element | Document;
-    // A timer rather than rAF: rAF stalls while the window is occluded.
-    clearTimeout(scrollTimer);
+    // Throttle, not debounce: mirror the position every frame while the user is
+    // still scrolling. A timer rather than rAF: rAF stalls while the window is occluded.
+    scrollTarget = e.target as Element | Document;
+    if (scrollTimer) return;
     scrollTimer = setTimeout(() => {
+      scrollTimer = undefined;
+      const target = scrollTarget;
       if (target === document || target === document.documentElement || target === document.body) {
         const se = document.scrollingElement || document.documentElement;
         emit({ t: 'scroll', x: ratio(se.scrollLeft, se.scrollWidth - se.clientWidth), y: ratio(se.scrollTop, se.scrollHeight - se.clientHeight) });

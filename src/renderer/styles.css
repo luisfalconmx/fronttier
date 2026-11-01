@@ -153,11 +153,9 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .pane.loading .pane-head { background-image: linear-gradient(90deg, transparent, var(--accent-2), transparent); background-size: 40% 100%; background-repeat: no-repeat; animation: loading 1.2s infinite linear; }
 @keyframes loading { from { background-position: -40% 0; } to { background-position: 140% 0; } }
 .pane-body { position: relative; }
-.pane-frame { position: relative; display: flex; flex-direction: column; overflow: hidden; background: #fff; border-radius: var(--radius); box-shadow: 0 0 0 1px var(--line); }
-.pane.selected .pane-frame { box-shadow: 0 0 0 2px var(--accent); }
+.pane-frame { position: relative; display: flex; flex-direction: column; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px var(--line); }
+.pane.selected:not(.menu-open) .pane-frame { box-shadow: 0 0 0 2px var(--accent); }
 .pane-frame webview { display: flex; flex: none; border: 0; background: #fff; }
-.pane-resize { position: absolute; top: 0; right: -8px; width: 8px; height: 100%; cursor: ew-resize; }
-.pane-resize:hover { background: var(--accent-2); }
 .pane-foot { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 0; font-size: 11px; }
 .no-headers .pane-foot { display: none; }
 .vital { display: inline-flex; gap: 4px; align-items: baseline; padding: 1px 6px; border-radius: 4px; background: var(--bg-3); font-variant-numeric: tabular-nums; }

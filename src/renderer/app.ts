@@ -54,6 +54,7 @@ export class App {
   private recordBtn!: HTMLButtonElement;
   private syncBtn!: HTMLButtonElement;
   private starBtn!: HTMLButtonElement;
+  private schemeBtn = h('button', { class: 'icon-btn', onclick: () => this.cycleColorScheme() });
   private zoomLabel = h('span', { class: 'zoom-label' });
   private wrap = h('div', { class: 'panes-wrap' });
   private sizer = h('div', { class: 'panes-sizer' });
@@ -144,6 +145,7 @@ export class App {
       h('div', { class: 'url-box' }, this.urlInput, this.starBtn, this.urlList),
       iconButton('zoomOut', 'Alejar (Ctrl/Cmd+-)', () => this.zoom(-0.1)),
       iconButton('zoomIn', 'Acercar (Ctrl/Cmd+=)', () => this.zoom(0.1)),
+      this.schemeBtn,
       h('button', { class: 'btn', title: 'Agregar panel', onclick: (e: MouseEvent) => this.addPaneMenu(e.currentTarget as HTMLElement) }, icon('plus'), 'Panel'),
       h('button', { class: 'btn', title: 'Diseño', onclick: (e: MouseEvent) => this.layoutMenu(e.currentTarget as HTMLElement) }, icon('layout'), this.zoomLabel),
       iconButton('panel', 'Panel lateral (Ctrl/Cmd+\\)', () => this.togglePanel()),
@@ -166,6 +168,7 @@ export class App {
     );
     clear(root, h('div', { class: 'tabbar' }, this.tabsEl, iconButton('plus', 'Nueva pestaña (Ctrl/Cmd+T)', () => this.openTab(''))), toolbar, h('div', { class: 'workspace' }, main, this.side), this.status);
     this.buildFindBar();
+    this.renderSchemeBtn();
     this.renderHistory();
     this.wrap.addEventListener('mousedown', (e) => {
       if (e.target === this.wrap || e.target === this.sizer || e.target === this.inner) this.select(null);
@@ -375,6 +378,20 @@ export class App {
     this.save();
     this.events.emit('emu');
     this.renderStatus();
+    this.renderSchemeBtn();
+  }
+
+  /** Toolbar switch for prefers-color-scheme: system → light → dark. */
+  private cycleColorScheme() {
+    const next = ({ '': 'light', light: 'dark', dark: '' } as const)[this.settings.emu.colorScheme];
+    this.setEmu({ colorScheme: next });
+  }
+
+  private renderSchemeBtn() {
+    const [name, label] = { '': ['system', 'del sistema'], light: ['sun', 'claro'], dark: ['moon', 'oscuro'] }[this.settings.emu.colorScheme];
+    clear(this.schemeBtn, icon(name));
+    this.schemeBtn.title = `prefers-color-scheme: modo ${label} (clic para cambiar)`;
+    this.schemeBtn.setAttribute('aria-label', this.schemeBtn.title);
   }
 
   setSync(patch: Partial<Settings['sync']>) {

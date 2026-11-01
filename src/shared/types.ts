@@ -44,6 +44,8 @@ export interface PaneConfig {
   deviceId?: string;
   /** Pane-only overrides layered on top of the global emulation. */
   colorScheme?: '' | 'light' | 'dark';
+  /** Show the Web Vitals bar under the pane (hidden by default). */
+  showVitals?: boolean;
 }
 
 export type NetworkPreset = 'none' | 'fast4g' | 'fast3g' | 'slow3g' | 'offline';
