@@ -2,7 +2,8 @@ import type { Device, Emulation, PaneConfig, PaneToolsState, SyncFlags } from '.
 import { deviceById, PRESETS } from './devices';
 import { uid } from './dom';
 
-export type Layout = 'horizontal' | 'grid' | 'focus' | 'full';
+export type Layout = 'horizontal' | 'vertical' | 'canvas' | 'focus' | 'split' | 'full';
+export type Align = 'left' | 'center' | 'right';
 
 export interface TabState {
   id: string;
@@ -24,6 +25,7 @@ export interface Settings {
   portalPort: number;
   portalPublic: boolean;
   layout: Layout;
+  align: Align;
   zoom: number;
   zoomFit: boolean;
   pageZoom: number;
@@ -105,6 +107,7 @@ export function defaultSettings(): Settings {
     portalPort: 7788,
     portalPublic: false,
     layout: 'horizontal',
+    align: 'left',
     zoom: 1,
     zoomFit: true,
     pageZoom: 1,

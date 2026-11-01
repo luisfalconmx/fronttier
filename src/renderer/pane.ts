@@ -414,10 +414,7 @@ export class PaneView {
         () => close(),
       ),
     );
-    // While the menu is open the pane drops its red selection ring.
-    this.el.classList.add('menu-open');
-    anchor.blur();
-    const close = popover(anchor, body, { width: 300, align: 'right', beside: this.el, onClose: () => this.el.classList.remove('menu-open') });
+    const close = popover(anchor, body, { width: 300, align: 'right', beside: this.el });
   }
 
   destroy() {

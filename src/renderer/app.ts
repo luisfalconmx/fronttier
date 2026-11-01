@@ -7,7 +7,7 @@ import { openPalette, type Command } from './palette';
 import { PANELS, type PanelInstance } from './panels';
 import { Recorder } from './recorder';
 import { version } from '../../package.json';
-import { DEFAULT_EMULATION, DEFAULT_TOOLS, defaultSettings, newTab, normalizeUrl, paneFromDevice, paneFromWidth, presetPanes, type Layout, type Settings, type TabState } from './state';
+import { DEFAULT_EMULATION, DEFAULT_TOOLS, defaultSettings, newTab, normalizeUrl, paneFromDevice, paneFromWidth, presetPanes, type Align, type Layout, type Settings, type TabState } from './state';
 
 type Handler = (...args: any[]) => void;
 class Emitter {
@@ -24,10 +24,19 @@ class Emitter {
 
 const LAYOUTS: [Layout, string][] = [
   ['horizontal', 'Horizontal'],
-  ['grid', 'Cuadrícula'],
-  ['focus', 'Enfocado (un panel)'],
-  ['full', 'Completo (navegador normal)'],
+  ['vertical', 'Vertical'],
+  ['canvas', 'Canvas'],
+  ['focus', 'Focus'],
+  ['split', 'Split'],
+  ['full', 'Full'],
 ];
+const ALIGNS: [Align, string][] = [
+  ['left', 'Left'],
+  ['center', 'Center'],
+  ['right', 'Right'],
+];
+/** Layouts that show only the selected pane (split: it and its neighbour). */
+const SOLO = new Set<Layout>(['focus', 'split', 'full']);
 
 export class App {
   settings: Settings = defaultSettings();
@@ -55,7 +64,8 @@ export class App {
   private syncBtn!: HTMLButtonElement;
   private starBtn!: HTMLButtonElement;
   private schemeBtn = h('button', { class: 'icon-btn', onclick: () => this.cycleColorScheme() });
-  private zoomLabel = h('span', { class: 'zoom-label' });
+  private zoomOutBtn = iconButton('zoomOut', 'Alejar (Ctrl/Cmd+-)', () => this.zoom(-0.1));
+  private zoomInBtn = iconButton('zoomIn', 'Acercar (Ctrl/Cmd+=)', () => this.zoom(0.1));
   private wrap = h('div', { class: 'panes-wrap' });
   private sizer = h('div', { class: 'panes-sizer' });
   private inner = h('div', { class: 'panes' });
@@ -74,6 +84,7 @@ export class App {
       const d = defaultSettings();
       this.settings = { ...d, ...saved, emu: { ...DEFAULT_EMULATION, ...saved.emu, geo: saved.emu?.geo ?? DEFAULT_EMULATION.geo }, sync: { ...d.sync, ...saved.sync } };
       if (!this.settings.tabs?.length) this.settings.tabs = d.tabs;
+      if ((this.settings.layout as string) === 'grid') this.settings.layout = 'canvas';
     }
     this.tab = this.settings.tabs.find((t) => t.id === this.settings.activeTab) ?? this.settings.tabs[0];
     this.applyTheme();
@@ -143,11 +154,11 @@ export class App {
       iconButton('forward', 'Adelante', () => this.history(1)),
       iconButton('reload', 'Recargar todo (Ctrl/Cmd+R)', () => this.reloadAll(false)),
       h('div', { class: 'url-box' }, this.urlInput, this.starBtn, this.urlList),
-      iconButton('zoomOut', 'Alejar (Ctrl/Cmd+-)', () => this.zoom(-0.1)),
-      iconButton('zoomIn', 'Acercar (Ctrl/Cmd+=)', () => this.zoom(0.1)),
+      this.zoomOutBtn,
+      this.zoomInBtn,
       this.schemeBtn,
-      h('button', { class: 'btn', title: 'Agregar panel', onclick: (e: MouseEvent) => this.addPaneMenu(e.currentTarget as HTMLElement) }, icon('plus'), 'Panel'),
-      h('button', { class: 'btn', title: 'Diseño', onclick: (e: MouseEvent) => this.layoutMenu(e.currentTarget as HTMLElement) }, icon('layout'), this.zoomLabel),
+      iconButton('layout', 'Diseño de los paneles', (e) => this.layoutMenu(e.currentTarget as HTMLElement)),
+      iconButton('addPane', 'Agregar panel', (e) => this.addPaneMenu(e.currentTarget as HTMLElement)),
       iconButton('panel', 'Panel lateral (Ctrl/Cmd+\\)', () => this.togglePanel()),
     );
     this.wrap.append(this.sizer);
@@ -350,7 +361,7 @@ export class App {
     if (this.selected === p) return;
     this.selected = p;
     for (const x of this.panes) x.setSelected(x === p);
-    if (this.settings.layout === 'focus' || this.settings.layout === 'full') this.relayout();
+    if (SOLO.has(this.settings.layout)) this.relayout();
     this.events.emit('select', p);
   }
 
@@ -414,42 +425,63 @@ export class App {
   relayout() {
     const L = this.settings.layout;
     const focused = this.primary();
-    this.inner.className = 'panes layout-' + L + (this.settings.headers ? '' : ' no-headers');
-    for (const p of this.panes) {
-      const off = (L === 'focus' || L === 'full') && p !== focused;
-      p.el.classList.toggle('offstage', off);
-    }
+    this.inner.className = 'panes layout-' + L + ' align-' + this.settings.align + (this.settings.headers ? '' : ' no-headers');
+    this.wrap.classList.remove('align-left', 'align-center', 'align-right');
+    this.wrap.classList.add('align-' + this.settings.align);
+    const i = focused ? this.panes.indexOf(focused) : -1;
+    const partner = L === 'split' ? (this.panes[i + 1] ?? this.panes[i - 1]) : undefined;
+    const shown = new Set(SOLO.has(L) ? [focused, partner].filter(Boolean) : this.panes);
+    for (const p of this.panes) p.el.classList.toggle('offstage', !shown.has(p));
     const wrapW = this.wrap.clientWidth;
     const wrapH = this.wrap.clientHeight;
-    if (L === 'full' && focused) focused.setOverride({ width: Math.max(320, wrapW - 32), height: Math.max(300, wrapH - (this.settings.headers ? 72 : 40)) });
-    for (const p of this.panes) if (L !== 'full' || p !== focused) p.setOverride(null);
+    // Full and split stretch their panes to fill the area instead of zooming them.
+    const stretched = L === 'full' || L === 'split';
+    const fillH = Math.max(300, wrapH - (this.settings.headers ? 72 : 40));
+    if (stretched && focused) {
+      const cols = shown.size;
+      const w = Math.max(320, Math.floor((wrapW - 16 * (cols + 1)) / cols));
+      for (const p of shown) p!.setOverride({ width: w, height: fillH });
+    }
+    for (const p of this.panes) if (!stretched || !shown.has(p)) p.setOverride(null);
 
-    let s = this.settings.zoomFit ? 1 : this.settings.zoom;
-    const visible = this.panes.filter((p) => !p.el.classList.contains('offstage'));
-    if (this.settings.zoomFit && visible.length && L !== 'full') {
+    let s = this.settings.zoomFit || stretched ? 1 : this.settings.zoom;
+    const visible = this.panes.filter((p) => shown.has(p));
+    if (this.settings.zoomFit && visible.length && !stretched) {
       const gap = 16;
       const widths = visible.map((p) => p.el.offsetWidth);
       const heights = visible.map((p) => p.el.offsetHeight);
       const maxH = Math.max(...heights);
       const maxW = Math.max(...widths);
-      const totalW = L === 'horizontal' ? widths.reduce((a, b) => a + b, 0) + gap * (visible.length + 1) : maxW + gap * 2;
-      s = Math.min(1, (wrapW - 8) / totalW, (wrapH - 8) / (maxH + gap * 2));
+      const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0) + gap * (xs.length + 1);
+      const totalW = L === 'horizontal' ? sum(widths) : maxW + gap * 2;
+      const totalH = L === 'vertical' ? sum(heights) : maxH + gap * 2;
+      s = Math.min(1, (wrapW - 8) / totalW, (wrapH - 8) / totalH);
       s = Math.max(0.1, Math.floor(s * 100) / 100);
     }
     this.scale = s;
     this.inner.style.transform = `scale(${s})`;
-    this.inner.style.width = L === 'grid' ? Math.max(400, (wrapW - 8) / s) + 'px' : '';
+    this.inner.style.width = L === 'canvas' ? Math.max(400, (wrapW - 8) / s) + 'px' : '';
+    // Solo layouts span the visible area so alignment has room to act; wider content just scrolls.
+    this.inner.style.minWidth = SOLO.has(L) ? wrapW / s + 'px' : '';
     requestAnimationFrame(() => {
       this.sizer.style.width = this.inner.offsetWidth * s + 'px';
       this.sizer.style.height = this.inner.offsetHeight * s + 'px';
     });
-    this.zoomLabel.textContent = (this.settings.zoomFit ? 'Ajustar · ' : '') + Math.round(s * 100) + ' %';
+    const pct = (this.settings.zoomFit ? 'ajustado, ' : '') + Math.round(s * 100) + ' %';
+    this.zoomOutBtn.title = `Alejar (Ctrl/Cmd+-) · Zoom ${pct}`;
+    this.zoomInBtn.title = `Acercar (Ctrl/Cmd+=) · Zoom ${pct}`;
     this.renderStatus();
+  }
+
+  setAlign(a: Align) {
+    this.settings.align = a;
+    this.relayout();
+    this.save();
   }
 
   setLayout(L: Layout) {
     this.settings.layout = L;
-    if (L === 'focus' || L === 'full') this.selected ??= this.panes[0] ?? null;
+    if (SOLO.has(L)) this.selected ??= this.panes[0] ?? null;
     this.relayout();
     this.save();
   }
@@ -634,22 +666,21 @@ export class App {
   private layoutMenu(anchor: HTMLElement) {
     const close = popover(
       anchor,
-      menuList(
-        [
-          ...LAYOUTS.map(([l, label]) => ({ label, checked: this.settings.layout === l, onclick: () => this.setLayout(l) })),
-          'sep',
-          { label: 'Ajustar a la ventana', checked: this.settings.zoomFit, onclick: () => this.zoom('fit') },
-          { label: 'Zoom 100 %', onclick: () => this.zoom('reset') },
-          { label: 'Acercar', onclick: () => this.zoom(0.1) },
-          { label: 'Alejar', onclick: () => this.zoom(-0.1) },
-          'sep',
-          { label: 'Rotar todos los paneles', onclick: () => this.runCommand('rotate-panes') },
-          { label: 'Mostrar encabezados de panel', checked: this.settings.headers, onclick: () => this.runCommand('toggle-headers') },
-          { label: 'Emular densidad de píxeles (DPR)', checked: this.settings.emulateDpr, onclick: () => this.runCommand('toggle-dpr') },
-        ],
-        () => close(),
+      h(
+        'div',
+        null,
+        menuList(
+          LAYOUTS.map(([l, label]) => ({ label, checked: this.settings.layout === l, onclick: () => this.setLayout(l) })),
+          () => close(),
+        ),
+        h('div', { class: 'menu-sep' }),
+        h(
+          'div',
+          { class: 'seg seg-fill', role: 'group', 'aria-label': 'Alineación' },
+          ALIGNS.map(([a, label]) => h('button', { class: this.settings.align === a ? 'on' : '', onclick: () => (this.setAlign(a), close()) }, label)),
+        ),
       ),
-      { width: 260 },
+      { width: 200, align: 'right' },
     );
   }
 

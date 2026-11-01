@@ -1,8 +1,8 @@
 import {
   Accessibility, ArrowLeft, ArrowLeftToLine, ArrowRight, ArrowRightToLine, Bug, Camera, Check, Circle, CodeXml, Columns3, Command, Copy, CopyPlus,
-  createElement, Database, Download, Ellipsis, Eye, FileText, Folder, Gauge, LayoutDashboard, ListTree, Maximize, MemoryStick, Moon, Network, PanelRight,
+  createElement, Database, Download, Ellipsis, Eye, FileText, Folder, Gauge, LayoutDashboard, ListTree, Maximize, Moon, Network, PanelRight,
   Pin, Plus, QrCode, RefreshCcw, RotateCcwSquare, RotateCw, ScrollText, Search, Settings, Share2, ShieldOff, Smartphone, SquareCode, SquareTerminal, Star,
-  Sun, SunMoon, Monitor, Tag, Trash2, TriangleAlert, X, Zap, ZoomIn, ZoomOut, type IconNode,
+  Sun, SunMoon, Tag, LayersPlus, Cpu, Trash2, TriangleAlert, X, Zap, ZoomIn, ZoomOut, type IconNode,
 } from 'lucide';
 import type { FronttierAPI } from '../shared/api';
 
@@ -82,7 +82,8 @@ const ICONS: Record<string, IconNode> = {
   moon: Moon,
   sun: Sun,
   scheme: SunMoon,
-  system: Monitor,
+  system: SunMoon,
+  addPane: LayersPlus,
   vitals: Gauge,
   search: Search,
   copy: Copy,
@@ -99,7 +100,7 @@ const ICONS: Record<string, IconNode> = {
   bolt: Zap,
   tag: Tag,
   panes: Columns3,
-  ram: MemoryStick,
+  ram: Cpu,
   shield: ShieldOff,
   moveLeft: ArrowLeftToLine,
   moveRight: ArrowRightToLine,
