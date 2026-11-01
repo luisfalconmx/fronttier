@@ -68,6 +68,7 @@ await Promise.all([
 
 cpSync(join(root, 'src/renderer/index.html'), join(out, 'renderer/index.html'));
 cpSync(join(root, 'src/renderer/styles.css'), join(out, 'renderer/styles.css'));
+cpSync(join(root, 'build/icon.png'), join(out, 'renderer/logo.png'));
 cpSync(require.resolve('axe-core/axe.min.js'), join(out, 'vendor/axe.min.js'));
 cpSync(require.resolve('axe-core/locales/es.json'), join(out, 'vendor/axe.es.json'));
 // macOS: Location Services helper, a universal mini app compiled once into

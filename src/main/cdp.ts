@@ -205,7 +205,9 @@ export async function emulate(id: number, p: EmulatePayload, defaultUA: string) 
     acceptLanguage: emu.locale || undefined,
   });
   await quiet(id, 'Emulation.setTouchEmulationEnabled', { enabled: pane.touch, maxTouchPoints: pane.touch ? 5 : 1 });
-  await quiet(id, 'Emulation.setEmitTouchEventsForMouse', { enabled: pane.touch, configuration: pane.mobile ? 'mobile' : 'desktop' });
+  // Mouse input stays mouse input: emitting touch events makes Chromium swap the
+  // arrow for its round touch cursor. Touch support is still reported to the page.
+  await quiet(id, 'Emulation.setEmitTouchEventsForMouse', { enabled: false });
   await quiet(id, 'Emulation.setEmulatedMedia', {
     media: emu.mediaType,
     features: [

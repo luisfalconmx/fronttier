@@ -207,8 +207,8 @@ export class App {
       h(
         'div',
         { class: 'start-card' },
-        h('div', { class: 'logo' }, h('span'), h('span'), h('span'), h('span')),
-        h('h1', null, 'Fronttier'),
+        h('img', { class: 'logo', src: 'logo.png', alt: '' }),
+        h('div', null, h('h1', null, 'Fronttier'), h('span', { class: 'start-version' }, `v${version}`)),
         h('p', { class: 'muted' }, 'Abre un sitio y míralo en varios dispositivos a la vez. Todo lo que hagas en un panel se refleja en los demás.'),
         input,
         h('div', { class: 'row center' }, h('button', { class: 'btn primary', onclick: () => this.navigate(input.value) }, 'Abrir'), h('button', { class: 'btn', onclick: () => this.runCommand('open-folder') }, icon('folder'), 'Abrir carpeta local')),
@@ -790,16 +790,15 @@ export class App {
     ].filter(Boolean) as string[];
     clear(
       this.status,
+      this.ram,
       h('span', { class: 'version' }, `v${version}`),
       h('span', null, `${this.panes.length} paneles`),
-      h('span', { class: syncOn ? '' : 'warn' }, syncOn === 6 ? 'Sincronización total' : syncOn ? `Sincronización parcial (${syncOn}/6)` : 'Sin sincronización'),
+      syncOn === 6 ? null : h('span', { class: 'warn' }, syncOn ? `Sincronización parcial (${syncOn}/6)` : 'Sin sincronización'),
       overflowing ? h('button', { class: 'warn link', onclick: () => this.setTools({ overflow: true }) }, `⚠ ${overflowing} con desborde horizontal`) : null,
       this.portal.running ? h('button', { class: 'link', onclick: () => this.openPanel('portal') }, `Portal activo · ${this.portal.clients} dispositivo(s)`) : null,
       this.flags.noCSP ? h('span', { class: 'warn' }, 'CSP desactivado') : null,
       this.flags.cors ? h('span', { class: 'warn' }, 'CORS abierto') : null,
       emuTags.length ? h('span', { class: 'emu-tags', title: emuTags.join(' · ') }, emuTags.join(' · ')) : null,
-      h('span', { class: 'spacer' }),
-      this.ram,
     );
   }
 
