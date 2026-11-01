@@ -36,6 +36,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 body.resizing, body.resizing * { cursor: ew-resize !important; user-select: none; }
+body.resizing-y, body.resizing-y * { cursor: ns-resize !important; }
 body.resizing webview { pointer-events: none; }
 button, input, select, textarea { font: inherit; color: inherit; }
 input, select, textarea {
@@ -128,11 +129,31 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .url-box .url:focus { background: var(--bg); border-color: var(--line-2); outline: none; }
 .url-box .icon-btn { position: absolute; right: 3px; }
 .url-box .icon-btn.on svg { fill: var(--accent); }
+.zoom-pct { min-width: 46px; height: 28px; padding: 0 4px; border: 0; border-radius: 6px; background: none; color: var(--fg-2); font-size: 12px; font-variant-numeric: tabular-nums; cursor: default; }
+.zoom-pct:hover { background: var(--bg-3); color: var(--fg); }
 
 /* Workspace */
 .workspace { display: flex; min-height: 0; min-width: 0; overflow: hidden; }
 .main { flex: 1; position: relative; min-width: 0; display: flex; flex-direction: column; background: var(--canvas); }
-.panes-wrap { flex: 1; min-height: 0; overflow: auto; position: relative; }
+.stage { flex: 1; min-height: 0; display: flex; }
+.stage.dock-bottom { flex-direction: column; }
+.pane-area { flex: 1; min-width: 0; min-height: 0; position: relative; display: flex; }
+.panes-wrap { flex: 1; min-height: 0; min-width: 0; overflow: auto; position: relative; }
+/* Docked DevTools: a slot beside (or under) the full-screen pane; the native DevTools view is laid over it. */
+.devtools-box { position: relative; flex: none; display: flex; background: var(--bg); border-left: 1px solid var(--line); width: 40%; min-width: 320px; }
+.stage.dock-left .devtools-box { order: -1; border-left: 0; border-right: 1px solid var(--line); }
+.stage.dock-bottom .devtools-box { width: auto; min-width: 0; height: 40%; min-height: 160px; border-left: 0; border-top: 1px solid var(--line); }
+/* Drag handle just outside the slot (the native view covers the slot itself). */
+.devtools-resizer { position: absolute; top: 0; bottom: 0; left: -6px; width: 6px; cursor: ew-resize; z-index: 5; }
+.devtools-resizer:hover, body.resizing .devtools-resizer { background: var(--line-2); }
+.stage.dock-left .devtools-resizer { left: auto; right: -6px; }
+.stage.dock-bottom .devtools-resizer { top: -6px; bottom: auto; left: 0; right: 0; width: auto; height: 6px; cursor: ns-resize; }
+
+/* No panes left in the tab. */
+.panes-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; }
+.panes-empty-card { display: grid; justify-items: center; gap: 10px; text-align: center; max-width: 360px; color: var(--fg-2); }
+.panes-empty-card h2 { color: var(--fg); font-size: 18px; }
+.panes-empty-card p { margin: 0; }
 .panes-sizer { position: relative; }
 .panes { display: flex; gap: 16px; padding: 16px; align-items: flex-start; transform-origin: 0 0; width: max-content; }
 .panes.layout-vertical { flex-direction: column; }
@@ -140,7 +161,7 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .panes.layout-full { padding: 0; gap: 0; }
 .panes-wrap.full { overflow: hidden; }
 .panes.layout-full .pane-head, .panes.layout-full .pane-foot { display: none; }
-.panes.layout-full .pane-frame { box-shadow: none; }
+.panes.layout-full .pane-frame { outline: none; }
 /* Alignment: the scaled sizer moves inside the scroll area; panes move inside it. */
 .panes-wrap.align-center .panes-sizer { margin-inline: auto; }
 .panes-wrap.align-right .panes-sizer { margin-left: auto; }
@@ -165,8 +186,11 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .pane-body { position: relative; }
 /* Gray hairline so dark sites stay distinguishable from the black canvas. The frame
    and webview have no background of their own: at fractional zoom a white one bled
-   through the antialiased edges as phantom white borders on dark pages. */
-.pane-frame { position: relative; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 0 1px var(--line-2); }
+   through the antialiased edges as phantom white borders on dark pages.
+   --pane-border is 1/zoom so the line stays one screen pixel on every side (a fixed
+   1px shrank below a pixel and dropped out on some edges), and the offset keeps the
+   webview's rounded-up surface from painting over it. */
+.pane-frame { position: relative; display: flex; flex-direction: column; overflow: hidden; outline: var(--pane-border, 1px) solid var(--line-2); outline-offset: var(--pane-border, 1px); }
 .pane-frame webview { display: flex; flex: none; border: 0; }
 .pane-foot { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 0; font-size: 11px; }
 .no-headers .pane-foot { display: none; }
@@ -222,8 +246,10 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 
 /* Side panel */
 /* Never shrinks or scrolls away: the panes area takes the overflow instead. */
-.side { position: relative; flex: none; height: 100%; min-height: 0; overflow: hidden; display: grid; grid-template-columns: 44px minmax(0, 1fr); background: var(--bg); border-left: 1px solid var(--line); min-width: 280px; max-width: 900px; }
-.side-resizer { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; cursor: ew-resize; z-index: 5; }
+/* Tools window: floats over the app at 85% of the viewport; menus (z 1000) stay above it. */
+.side { position: fixed; z-index: 900; inset: 7.5vh 7.5vw; overflow: hidden; display: grid; grid-template-columns: 44px minmax(0, 1fr); background: var(--bg); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow); }
+.side:focus { outline: none; }
+.side-backdrop { position: fixed; inset: 0; z-index: 899; background: rgba(0, 0, 0, 0.6); }
 .side-tabs { display: flex; flex-direction: column; gap: 2px; padding: 6px 4px; border-right: 1px solid var(--line); overflow-y: auto; scrollbar-width: none; }
 .side-tab { width: 36px; height: 34px; display: grid; place-items: center; border: 0; background: none; border-radius: 6px; color: var(--muted); cursor: default; }
 .side-tab:hover { background: var(--bg-3); color: var(--fg); }
@@ -234,7 +260,7 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .side-action.record-btn.recording { color: #fff; background: var(--bad); }
 .side-body .row { flex-wrap: wrap; }
 .side-body { overflow-y: auto; overflow-x: hidden; padding: 0 14px 24px; min-width: 0; }
-.side-head { position: sticky; top: 0; background: var(--bg); padding: 12px 0 10px; z-index: 2; }
+.side-head { position: sticky; top: 0; display: flex; align-items: center; gap: 8px; background: var(--bg); padding: 12px 0 10px; z-index: 2; }
 .side-head h2 { font-size: 15px; }
 .psec { margin: 14px 0; display: grid; gap: 8px; }
 .psec > h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }

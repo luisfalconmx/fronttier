@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { FronttierAPI } from '../shared/api';
 
 const invoke = (channel: string) => (...args: unknown[]) => ipcRenderer.invoke(channel, ...args);
-const CHANNELS = new Set(['menu', 'net', 'ctx', 'open-tab', 'portal-event', 'portal-status', 'live-reload', 'toast', 'fullscreen', 'csp-detected']);
+const CHANNELS = new Set(['menu', 'net', 'ctx', 'open-tab', 'portal-event', 'portal-status', 'live-reload', 'toast', 'fullscreen', 'csp-detected', 'devtools-closed', 'devtools-dock', 'devtools-drag']);
 
 const api: FronttierAPI = {
   platform: process.platform,
@@ -22,6 +22,9 @@ const api: FronttierAPI = {
   clearData: invoke('clear-data') as FronttierAPI['clearData'],
   setSessionFlags: invoke('session-flags') as FronttierAPI['setSessionFlags'],
   openDevTools: invoke('open-devtools') as FronttierAPI['openDevTools'],
+  closeDevTools: invoke('close-devtools') as FronttierAPI['closeDevTools'],
+  devtoolsBounds: (id, bounds) => ipcRenderer.send('devtools-bounds', id, bounds),
+  devtoolsDrag: (id) => ipcRenderer.send('devtools-drag', id),
   inspectElement: invoke('inspect-element') as FronttierAPI['inspectElement'],
   portalStart: invoke('portal-start') as FronttierAPI['portalStart'],
   portalStop: invoke('portal-stop') as FronttierAPI['portalStop'],

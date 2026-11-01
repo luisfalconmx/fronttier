@@ -1,13 +1,13 @@
 import type { PaneConfig, PaneInit, PaneToolsState, PortalInfo, SessionFlags, SyncEvent, Emulation, NetSummary } from '../shared/types';
 import { openEditor } from './editor';
-import { api, ask, clear, escapeHtml, h, icon, iconButton, menuList, popover, toast } from './dom';
+import { api, ask, clear, escapeHtml, h, icon, iconButton, menuList, popover, setPopoverAvoid, toast } from './dom';
 import { DEVICES, GROUP_LABELS, PRESETS } from './devices';
 import { PaneView } from './pane';
 import { openPalette, type Command } from './palette';
 import { PANELS, type PanelInstance } from './panels';
 import { Recorder } from './recorder';
 import { version } from '../../package.json';
-import { DEFAULT_EMULATION, DEFAULT_TOOLS, defaultSettings, newTab, normalizeUrl, paneFromDevice, paneFromWidth, presetPanes, type Align, type Layout, type Settings, type TabState } from './state';
+import { DEFAULT_EMULATION, DEFAULT_TOOLS, defaultSettings, newTab, normalizeUrl, paneFromDevice, paneFromWidth, presetPanes, type Align, type DevtoolsDock, type Layout, type Settings, type TabState } from './state';
 
 type Handler = (...args: any[]) => void;
 class Emitter {
@@ -62,16 +62,30 @@ export class App {
   private syncBtn!: HTMLButtonElement;
   private starBtn!: HTMLButtonElement;
   private schemeBtn = h('button', { class: 'icon-btn', onclick: () => this.cycleColorScheme() });
-  private zoomOutBtn = iconButton('zoomOut', 'Alejar (Ctrl/Cmd+-)', () => this.zoom(-0.1));
-  private zoomInBtn = iconButton('zoomIn', 'Acercar (Ctrl/Cmd+=)', () => this.zoom(0.1));
+  private zoomOutBtn = iconButton('zoomOut', 'Alejar (Ctrl/Cmd+-)', () => this.zoomActive(-0.1));
+  private zoomInBtn = iconButton('zoomIn', 'Acercar (Ctrl/Cmd+=)', () => this.zoomActive(0.1));
+  private zoomLabel = h('button', { class: 'zoom-pct', onclick: () => (this.layout === 'full' ? this.pageZoom('reset') : this.zoom('fit')) });
   private wrap = h('div', { class: 'panes-wrap' });
   private sizer = h('div', { class: 'panes-sizer' });
   private inner = h('div', { class: 'panes' });
   private start = h('div', { class: 'start' });
   private focusBar = h('div', { class: 'focus-bar hidden', role: 'toolbar', 'aria-label': 'Paneles' });
+  /** Panes area plus the docked DevTools beside it. */
+  private stage = h('div', { class: 'stage' });
+  private devtoolsBox = h('div', { class: 'devtools-box hidden' });
+  private devtoolsBtn = iconButton('elements', 'DevTools (la posición se elige en su menú ⋮ › Dock side)', () => void this.toggleDevtools(), 'hidden');
+  /** Pane whose DevTools are open, and where. */
+  private devtools: { pane: PaneView; dock: DevtoolsDock } | null = null;
+  /** Active slot resize, fed by mouse events forwarded from the DevTools view. */
+  private onDevtoolsDrag: ((type: 'move' | 'up', x: number, y: number) => void) | null = null;
+  /** Panes torn down in full mode to free memory (only the shown one stays alive); rebuilt when leaving it. */
+  private parked: { cfg: PaneConfig; index: number }[] = [];
+  private emptyPanes = h('div', { class: 'panes-empty hidden' });
   private cspNotice = h('div', { class: 'csp-notice hidden', role: 'alertdialog', 'aria-label': 'Cabecera CSP detectada' });
   private findBar = h('div', { class: 'find-bar hidden' });
-  private side = h('aside', { class: 'side' });
+  /** Tools: a floating window over the app (85% of it), opened from the toolbar. */
+  private side = h('aside', { class: 'side', 'aria-label': 'Herramientas' });
+  private sideBackdrop = h('div', { class: 'side-backdrop hidden', onmousedown: () => this.togglePanel(false) });
   private sideTabs = h('nav', { class: 'side-tabs', 'aria-label': 'Herramientas' });
   private sideBody = h('div', { class: 'side-body' });
   private status = h('footer', { class: 'status' });
@@ -101,7 +115,7 @@ export class App {
     this.renderTabs();
     this.mountTab();
     this.openPanel(this.settings.panelTab, false);
-    this.side.classList.toggle('hidden', !this.settings.panelOpen);
+    this.togglePanel(false);
     setInterval(() => this.updateRam(), 4000);
     this.updateRam();
     new ResizeObserver(() => this.relayout()).observe(this.wrap);
@@ -113,8 +127,15 @@ export class App {
     this.saveTimer = setTimeout(() => api().settingsSet({ app: this.settings }), 400);
   }
 
+  /** Every pane of the tab in order, including the ones parked while in full mode. */
+  allPaneConfigs(): PaneConfig[] {
+    const list = this.panes.map((p) => p.cfg);
+    for (const { cfg, index } of [...this.parked].sort((a, b) => a.index - b.index)) list.splice(Math.min(index, list.length), 0, cfg);
+    return list;
+  }
+
   persistTab() {
-    this.tab.panes = this.panes.map((p) => p.cfg);
+    this.tab.panes = this.allPaneConfigs();
     this.save();
   }
 
@@ -155,19 +176,35 @@ export class App {
       iconButton('reload', 'Recargar todo (Ctrl/Cmd+R)', () => this.reloadAll(false)),
       h('div', { class: 'url-box' }, this.urlInput, this.starBtn, this.urlList),
       this.zoomOutBtn,
+      this.zoomLabel,
       this.zoomInBtn,
       this.schemeBtn,
+      this.devtoolsBtn,
       iconButton('layout', 'Diseño de los paneles', (e) => this.layoutMenu(e.currentTarget as HTMLElement)),
       iconButton('addPane', 'Agregar panel', (e) => this.addPaneMenu(e.currentTarget as HTMLElement)),
-      iconButton('panel', 'Panel lateral (Ctrl/Cmd+\\)', () => this.togglePanel()),
+      iconButton('settings', 'Herramientas (Ctrl/Cmd+\\)', () => this.togglePanel()),
     );
     this.wrap.append(this.sizer);
     this.sizer.append(this.inner);
-    const main = h('main', { class: 'main' }, this.findBar, this.focusBar, this.wrap, this.start, this.cspNotice);
-    const resizer = h('div', { class: 'side-resizer', title: 'Arrastra para cambiar el ancho' });
-    resizer.addEventListener('mousedown', (e) => this.resizeSide(e));
-    this.side.append(resizer, this.sideTabs, this.sideBody);
-    this.side.style.width = this.settings.panelWidth + 'px';
+    // The CSP notice sits over the panes only, never over the docked DevTools.
+    this.stage.append(h('div', { class: 'pane-area' }, this.wrap, this.emptyPanes, this.cspNotice), this.devtoolsBox);
+    this.devtoolsBox.append(h('div', { class: 'devtools-resizer', title: 'Arrastra para cambiar el tamaño', onmousedown: (e: MouseEvent) => this.resizeDevtools(e) }));
+    const addBtn = h('button', { class: 'btn primary', onclick: () => this.addPaneMenu(addBtn) }, icon('addPane'), 'Agregar panel');
+    this.emptyPanes.append(
+      h('div', { class: 'panes-empty-card' }, icon('addPane', 28), h('h2', null, 'No hay paneles'), h('p', { class: 'muted' }, 'Crea un panel para ver este sitio en un dispositivo o tamaño de pantalla.'), addBtn),
+    );
+    new ResizeObserver(() => this.syncDevtoolsBounds()).observe(this.devtoolsBox);
+    setPopoverAvoid(() => {
+      const d = this.devtools;
+      return d && d.dock !== 'window' ? { rect: this.devtoolsBox.getBoundingClientRect(), side: d.dock } : null;
+    });
+    new MutationObserver(() => this.syncDevtoolsBounds()).observe(document.body, { childList: true });
+    const main = h('main', { class: 'main' }, this.findBar, this.focusBar, this.stage, this.start);
+    this.side.append(this.sideTabs, this.sideBody);
+    this.side.setAttribute('role', 'dialog');
+    this.side.setAttribute('aria-modal', 'true');
+    this.side.tabIndex = -1;
+    this.side.addEventListener('keydown', (e) => e.key === 'Escape' && !document.querySelector('.popover') && this.togglePanel(false));
     for (const p of PANELS) this.sideTabs.append(h('button', { class: 'side-tab', 'data-id': p.id, title: p.title, 'aria-label': p.title, onclick: () => this.openPanel(p.id) }, icon(p.icon, 18)));
     // Global actions live at the bottom of the rail (Portal already has its own tab above).
     this.sideTabs.append(
@@ -177,7 +214,7 @@ export class App {
       this.recordBtn,
       sideAction('command', 'Barra de comandos (Ctrl/Cmd+K)', () => this.runCommand('command')),
     );
-    clear(root, h('div', { class: 'tabbar' }, this.tabsEl, iconButton('plus', 'Nueva pestaña (Ctrl/Cmd+T)', () => this.openTab(''))), toolbar, h('div', { class: 'workspace' }, main, this.side), this.status);
+    clear(root, h('div', { class: 'tabbar' }, this.tabsEl, iconButton('plus', 'Nueva pestaña (Ctrl/Cmd+T)', () => this.openTab(''))), toolbar, h('div', { class: 'workspace' }, main), this.status, this.sideBackdrop, this.side);
     this.buildFindBar();
     this.renderSchemeBtn();
     this.renderHistory();
@@ -221,7 +258,8 @@ export class App {
   private renderStart() {
     const recent = this.settings.history.slice(0, 8);
     const presets = Object.entries(PRESETS).map(([k, p]) =>
-      h('button', { class: 'chip' + (this.settings.defaultPreset === k ? ' on' : ''), onclick: () => ((this.settings.defaultPreset = k), (this.tab.panes = presetPanes(k)), this.save(), this.renderStart()) }, p.label),
+      // The preset used when a tab is spread into horizontal/vertical; a full/focus tab keeps its single pane.
+      h('button', { class: 'chip' + (this.settings.defaultPreset === k ? ' on' : ''), onclick: () => ((this.settings.defaultPreset = k), SOLO.has(this.layout) || (this.tab.panes = presetPanes(k)), this.save(), this.renderStart()) }, p.label),
     );
     const input = h('input', { class: 'start-url', placeholder: 'https://tu-sitio.com o localhost:3000', onkeydown: (e: KeyboardEvent) => e.key === 'Enter' && this.navigate(input.value) });
     clear(
@@ -262,8 +300,19 @@ export class App {
     );
   }
 
-  openTab(url: string, panes?: PaneConfig[]) {
-    const t = newTab(url ? normalizeUrl(url, this.settings.searchEngine) : '', panes ?? presetPanes(this.settings.defaultPreset));
+  /** Current tab's layout. */
+  get layout(): Layout {
+    return this.tab?.layout ?? this.settings.layout;
+  }
+
+  openTab(url: string) {
+    const t = newTab(url ? normalizeUrl(url, this.settings.searchEngine) : '');
+    this.settings.tabs.push(t);
+    this.switchTab(t);
+  }
+
+  private duplicateTab() {
+    const t = newTab(this.tab.url, structuredClone(this.tab.panes), this.layout);
     this.settings.tabs.push(t);
     this.switchTab(t);
   }
@@ -282,7 +331,7 @@ export class App {
     const i = this.settings.tabs.indexOf(t);
     this.closedTabs.push(t);
     this.settings.tabs.splice(i, 1);
-    if (!this.settings.tabs.length) this.settings.tabs.push(newTab('', presetPanes(this.settings.defaultPreset)));
+    if (!this.settings.tabs.length) this.settings.tabs.push(newTab());
     if (t === this.tab) {
       this.tab = this.settings.tabs[Math.max(0, i - 1)];
       this.settings.activeTab = this.tab.id;
@@ -296,6 +345,7 @@ export class App {
   mountTab() {
     for (const p of this.panes) p.destroy();
     this.panes = [];
+    this.parked = [];
     this.selected = null;
     this.net.clear();
     this.urlInput.value = this.tab.url;
@@ -311,12 +361,37 @@ export class App {
   }
 
   private createPane(cfg: PaneConfig) {
-    const p = new PaneView(this, cfg);
+    const p = this.buildPane(cfg);
     this.panes.push(p);
     p.el.style.order = String(this.panes.length);
+    return p;
+  }
+
+  private buildPane(cfg: PaneConfig) {
+    const p = new PaneView(this, cfg);
     this.inner.append(p.el);
     p.load(this.tab.url);
     return p;
+  }
+
+  /** Full mode keeps one live pane; the rest are destroyed and come back, in order, on leaving it. */
+  private parkPanes(L: Layout) {
+    if (this.parked.length && (L !== 'full' || !this.panes.length)) {
+      const live = new Map(this.panes.map((p) => [p.cfg, p]));
+      const all = this.allPaneConfigs();
+      this.parked = [];
+      this.panes = all.map((cfg) => live.get(cfg) ?? this.buildPane(cfg));
+      this.panes.forEach((p, k) => (p.el.style.order = String(k)));
+    }
+    const focused = this.primary();
+    if (L === 'full' && focused && this.panes.length > 1) {
+      this.panes.forEach((p, index) => {
+        if (p === focused) return;
+        this.parked.push({ cfg: p.cfg, index });
+        p.destroy();
+      });
+      this.panes = [focused];
+    }
   }
 
   // ---------- panes ----------
@@ -329,8 +404,13 @@ export class App {
     }
     const p = this.createPane(cfg);
     this.persistTab();
-    // In focus/full the new pane would be off-stage; switch to it right away.
-    if (SOLO.has(this.settings.layout) && p) this.select(p);
+    // Adding to a full-screen tab means comparing panes: spread them out.
+    if (this.layout === 'full') {
+      this.settings.align = 'left';
+      return this.setLayout('horizontal');
+    }
+    // In focus the new pane would be off-stage; switch to it right away.
+    if (SOLO.has(this.layout) && p) this.select(p);
     this.relayout();
   }
 
@@ -363,7 +443,7 @@ export class App {
     if (this.selected === p) return;
     this.selected = p;
     for (const x of this.panes) x.setSelected(x === p);
-    if (SOLO.has(this.settings.layout)) this.relayout();
+    if (SOLO.has(this.layout)) this.relayout();
     this.events.emit('select', p);
   }
 
@@ -425,14 +505,21 @@ export class App {
 
   // ---------- layout & zoom ----------
   relayout() {
-    const L = this.settings.layout;
+    const L = this.layout;
+    this.parkPanes(L);
     const focused = this.primary();
+    this.emptyPanes.classList.toggle('hidden', !this.tab.url || this.panes.length > 0);
     this.inner.className = 'panes layout-' + L + ' align-' + this.settings.align + (this.settings.headers ? '' : ' no-headers');
     this.wrap.classList.remove('align-left', 'align-center', 'align-right');
     this.wrap.classList.add('align-' + this.settings.align);
     const shown = new Set(SOLO.has(L) ? [focused] : this.panes);
     for (const p of this.panes) p.el.classList.toggle('offstage', !shown.has(p));
     this.renderFocusBar();
+    // DevTools button only makes sense when a single pane is on screen.
+    this.devtoolsBtn.classList.toggle('hidden', !SOLO.has(L) || !focused);
+    // Docked DevTools belong to the shown pane; a DevTools window can outlive the layout.
+    const d = this.devtools;
+    if (d && d.dock !== 'window' && (!SOLO.has(L) || d.pane !== focused)) void this.closeDevtools();
     // No scrollbars in full, so the area is measured at its real size.
     this.wrap.classList.toggle('full', L === 'full');
     const wrapW = this.wrap.clientWidth;
@@ -458,15 +545,15 @@ export class App {
     }
     this.scale = s;
     this.inner.style.transform = `scale(${s})`;
+    // Pane borders are drawn inside the scaled layer; this keeps them one screen pixel wide.
+    this.inner.style.setProperty('--pane-border', 1 / s + 'px');
     // Solo layouts span the visible area so alignment has room to act; wider content just scrolls.
     this.inner.style.minWidth = SOLO.has(L) ? wrapW / s + 'px' : '';
     requestAnimationFrame(() => {
       this.sizer.style.width = this.inner.offsetWidth * s + 'px';
       this.sizer.style.height = this.inner.offsetHeight * s + 'px';
     });
-    const pct = (this.settings.zoomFit ? 'ajustado, ' : '') + Math.round(s * 100) + ' %';
-    this.zoomOutBtn.title = `Alejar (Ctrl/Cmd+-) · Zoom ${pct}`;
-    this.zoomInBtn.title = `Acercar (Ctrl/Cmd+=) · Zoom ${pct}`;
+    this.renderZoomLabel();
     this.renderStatus();
   }
 
@@ -514,9 +601,104 @@ export class App {
     this.cspNotice.classList.remove('hidden');
   }
 
-  /** Focus mode: quick switcher between panes, plus a way to add one. */
+  private toggleDevtools() {
+    return this.devtools ? this.closeDevtools() : this.openDevtools(this.settings.devtoolsDock);
+  }
+
+  /** Opens (or moves) the shown pane's DevTools: docked beside it, or in their own window. */
+  async openDevtools(dock: DevtoolsDock, pane = this.primary(), remember = true) {
+    if (!pane?.wcId) return this.toast('El panel aún no está listo');
+    if (remember) {
+      this.settings.devtoolsDock = dock;
+      this.save();
+    }
+    // Reserve the docked area first so its bounds are known.
+    this.stage.className = 'stage dock-' + dock;
+    this.devtoolsBox.classList.toggle('hidden', dock === 'window');
+    this.applyDevtoolsSize();
+    try {
+      await api().openDevTools(pane.wcId, dock, dock === 'window' ? undefined : this.devtoolsRect());
+      this.devtools = { pane, dock };
+      // Resize notifications during the move were skipped while the old dock was current.
+      this.syncDevtoolsBounds();
+    } catch (e) {
+      this.removeDevtoolsHost();
+      this.toast('No se pudieron abrir las DevTools: ' + (e as Error).message, 'error');
+    }
+  }
+
+  async closeDevtools() {
+    const open = this.devtools;
+    this.devtools = null;
+    this.removeDevtoolsHost();
+    if (open?.pane.wcId) await api().closeDevTools(open.pane.wcId).catch(() => {});
+  }
+
+  /** Slot size: width when docked on a side, height when docked at the bottom. */
+  private applyDevtoolsSize() {
+    const bottom = this.stage.classList.contains('dock-bottom');
+    this.devtoolsBox.style.width = bottom ? '' : this.settings.devtoolsWidth ? this.settings.devtoolsWidth + 'px' : '';
+    this.devtoolsBox.style.height = bottom && this.settings.devtoolsHeight ? this.settings.devtoolsHeight + 'px' : '';
+  }
+
+  private resizeDevtools(e: MouseEvent) {
+    e.preventDefault();
+    const dock = this.devtools?.dock ?? this.settings.devtoolsDock;
+    const stage = this.stage.getBoundingClientRect();
+    const box = this.devtoolsBox.getBoundingClientRect();
+    const wcId = this.devtools?.pane.wcId ?? null;
+    document.body.classList.add('resizing', dock === 'bottom' ? 'resizing-y' : 'resizing-x');
+    // DevTools stay visible: when the cursor crosses into their native view, main
+    // forwards the moves and the release (onDevtoolsDrag).
+    api().devtoolsDrag(wcId);
+    const moveTo = (x: number, y: number) => {
+      if (dock === 'bottom') {
+        this.settings.devtoolsHeight = Math.round(Math.min(stage.height - 120, Math.max(160, box.bottom - y)));
+      } else {
+        const w = dock === 'left' ? x - box.left : box.right - x;
+        this.settings.devtoolsWidth = Math.round(Math.min(stage.width - 240, Math.max(280, w)));
+      }
+      this.applyDevtoolsSize();
+      this.syncDevtoolsBounds();
+    };
+    const move = (ev: MouseEvent) => moveTo(ev.clientX, ev.clientY);
+    const up = () => {
+      document.body.classList.remove('resizing', 'resizing-x', 'resizing-y');
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      this.onDevtoolsDrag = null;
+      api().devtoolsDrag(null);
+      this.syncDevtoolsBounds();
+      this.save();
+    };
+    this.onDevtoolsDrag = (type, x, y) => (type === 'up' ? up() : moveTo(x, y));
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  }
+
+  private removeDevtoolsHost() {
+    this.devtoolsBox.classList.add('hidden');
+    this.stage.className = 'stage';
+  }
+
+  /** Window-space rect of the docked area; the native DevTools view is placed over it. */
+  private devtoolsRect() {
+    const r = this.devtoolsBox.getBoundingClientRect();
+    return { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) };
+  }
+
+  /** Keeps the docked DevTools over its slot, and out of the way of shell overlays. */
+  private syncDevtoolsBounds() {
+    const d = this.devtools;
+    if (!d || d.dock === 'window' || !d.pane.wcId) return;
+    // Menus avoid the DevTools instead (setPopoverAvoid); only full-window dialogs hide them.
+    const covered = document.querySelector('.modal-backdrop, .palette-backdrop, .editor, .side:not(.hidden)');
+    api().devtoolsBounds(d.pane.wcId, covered ? null : this.devtoolsRect());
+  }
+
+  /** Focus mode: quick switcher between panes. */
   private renderFocusBar() {
-    const on = this.settings.layout === 'focus' && this.panes.length > 0;
+    const on = this.layout === 'focus' && this.panes.length > 0;
     this.focusBar.classList.toggle('hidden', !on);
     if (!on) return;
     const current = this.primary();
@@ -531,7 +713,6 @@ export class App {
           h('small', null, `${p.cfg.width}×${p.cfg.height}`),
         ),
       ),
-      iconButton('addPane', 'Agregar panel', (e) => this.addPaneMenu(e.currentTarget as HTMLElement)),
     );
   }
 
@@ -542,7 +723,13 @@ export class App {
   }
 
   setLayout(L: Layout) {
+    this.tab.layout = L;
     this.settings.layout = L;
+    // A single browsing pane becomes the classic phone/tablet/desktop set when spread out.
+    if ((L === 'horizontal' || L === 'vertical') && this.allPaneConfigs().length <= 1) {
+      this.replacePanes(presetPanes(this.settings.defaultPreset));
+      return;
+    }
     if (SOLO.has(L)) this.selected ??= this.panes[0] ?? null;
     this.relayout();
     this.save();
@@ -564,27 +751,19 @@ export class App {
   pageZoom(delta: number | 'reset') {
     this.settings.pageZoom = delta === 'reset' ? 1 : Math.min(3, Math.max(0.25, Math.round((this.settings.pageZoom + delta) * 100) / 100));
     for (const p of this.panes) p.webview.setZoomFactor(this.settings.pageZoom);
-    this.toast(`Zoom de página ${Math.round(this.settings.pageZoom * 100)} %`);
+    this.renderZoomLabel();
     this.save();
   }
 
-  private resizeSide(e: MouseEvent) {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startW = this.side.offsetWidth;
-    document.body.classList.add('resizing');
-    const move = (ev: MouseEvent) => {
-      this.settings.panelWidth = Math.min(900, Math.max(280, startW - (ev.clientX - startX)));
-      this.side.style.width = this.settings.panelWidth + 'px';
-    };
-    const up = () => {
-      document.body.classList.remove('resizing');
-      removeEventListener('mousemove', move);
-      removeEventListener('mouseup', up);
-      this.save();
-    };
-    addEventListener('mousemove', move);
-    addEventListener('mouseup', up);
+  /** Toolbar zoom: in full mode it zooms the page itself (like a browser), otherwise the panes canvas. */
+  zoomActive(delta: number) {
+    return this.layout === 'full' ? this.pageZoom(delta) : this.zoom(delta);
+  }
+
+  private renderZoomLabel() {
+    const full = this.layout === 'full';
+    this.zoomLabel.textContent = Math.round((full ? this.settings.pageZoom : this.scale) * 100) + ' %';
+    this.zoomLabel.title = full ? 'Zoom de la página · clic para 100 %' : `Zoom de los paneles${this.settings.zoomFit ? ' (ajustado)' : ''} · clic para ajustar a la ventana`;
   }
 
   // ---------- navigation & sync ----------
@@ -679,7 +858,7 @@ export class App {
       this.panels.set(def.id, inst);
     }
     for (const [k, other] of this.panels) if (k !== def.id) other.hide?.();
-    clear(this.sideBody, h('div', { class: 'side-head' }, h('h2', null, def.title)), inst.el);
+    clear(this.sideBody, h('div', { class: 'side-head' }, h('h2', { class: 'grow' }, def.title), iconButton('close', 'Cerrar (Esc)', () => this.togglePanel(false))), inst.el);
     this.sideTabs.querySelectorAll('.side-tab').forEach((b) => b.classList.toggle('active', (b as HTMLElement).dataset.id === def.id));
     if (show && !this.settings.panelOpen) this.togglePanel(true);
     inst.show?.();
@@ -690,7 +869,12 @@ export class App {
   togglePanel(on = !this.settings.panelOpen) {
     this.settings.panelOpen = on;
     this.side.classList.toggle('hidden', !on);
-    if (on) this.panels.get(this.settings.panelTab)?.show?.();
+    this.sideBackdrop.classList.toggle('hidden', !on);
+    if (on) {
+      this.panels.get(this.settings.panelTab)?.show?.();
+      this.side.focus(); // so Escape reaches it
+    }
+    this.syncDevtoolsBounds();
     this.save();
   }
 
@@ -732,7 +916,7 @@ export class App {
         'div',
         null,
         menuList(
-          LAYOUTS.map(([l, label]) => ({ label, checked: this.settings.layout === l, onclick: () => this.setLayout(l) })),
+          LAYOUTS.map(([l, label]) => ({ label, checked: this.layout === l, onclick: () => this.setLayout(l) })),
           () => close(),
         ),
         h('div', { class: 'menu-sep' }),
@@ -909,7 +1093,7 @@ export class App {
     clear(
       this.status,
       h('span', { class: 'version' }, icon('tag', 13), `v${version}`),
-      h('span', null, icon('panes', 13), `${this.panes.length} paneles`),
+      h('span', null, icon('panes', 13), `${this.panes.length} ${this.panes.length === 1 ? 'panel' : 'paneles'}`),
       this.ram,
       syncOn === 6 ? null : h('span', { class: 'warn' }, icon('sync', 13), syncOn ? `Sincronización parcial (${syncOn}/6)` : 'Sin sincronización'),
       overflowing ? h('button', { class: 'warn link', onclick: () => this.setTools({ overflow: true }) }, icon('warn', 13), `${overflowing} con desborde horizontal`) : null,
@@ -928,9 +1112,20 @@ export class App {
       this.net.set(s.wcId, s);
       this.events.emit('net', s);
     });
-    a.on('open-tab', (url: string) => this.openTab(url, structuredClone(this.tab.panes).map((p) => ({ ...p, id: Math.random().toString(36).slice(2) }))));
+    a.on('open-tab', (url: string) => this.openTab(url));
     a.on('toast', (msg: string) => this.toast(msg));
     a.on('csp-detected', (url: string) => this.showCspNotice(url));
+    // "Dock side" picked inside DevTools' own ⋮ menu.
+    a.on('devtools-dock', (wcId: number, dock: DevtoolsDock) => {
+      const pane = this.devtools?.pane.wcId === wcId ? this.devtools.pane : this.panes.find((p) => p.wcId === wcId && p === this.primary() && SOLO.has(this.layout));
+      if (pane && dock !== this.devtools?.dock) void this.openDevtools(dock, pane);
+    });
+    a.on('devtools-drag', (type: 'move' | 'up', x: number, y: number) => this.onDevtoolsDrag?.(type, x, y));
+    a.on('devtools-closed', (wcId: number) => {
+      if (this.devtools?.pane.wcId !== wcId) return;
+      this.devtools = null;
+      this.removeDevtoolsHost();
+    });
     a.on('portal-event', (ev: SyncEvent) => {
       if (ev.t === 'nav') {
         if (ev.url !== this.tab.url) this.navigate(ev.url);
@@ -1000,7 +1195,7 @@ export class App {
       });
     this.commands = [
       c('new-tab', 'Nueva pestaña', () => this.openTab(''), '⌘T'),
-      c('duplicate-tab', 'Duplicar pestaña', () => this.openTab(this.tab.url, structuredClone(this.tab.panes))),
+      c('duplicate-tab', 'Duplicar pestaña', () => this.duplicateTab()),
       c('close-tab', 'Cerrar pestaña', () => this.closeTab(this.tab), '⌘W'),
       c('reopen-tab', 'Reabrir pestaña cerrada', () => {
         const t = this.closedTabs.pop();
@@ -1034,8 +1229,8 @@ export class App {
       }, '⇧⌘R'),
       c('reload-css', 'Recargar solo el CSS', () => this.toolAll('reloadCSS'), '⌥⌘R'),
       ...LAYOUTS.map(([l, label], i) => c('layout-' + l, 'Diseño: ' + label, () => this.setLayout(l), `⌥${i + 1}`)),
-      c('zoom-in', 'Acercar', () => this.zoom(0.1), '⌘='),
-      c('zoom-out', 'Alejar', () => this.zoom(-0.1), '⌘-'),
+      c('zoom-in', 'Acercar', () => this.zoomActive(0.1), '⌘='),
+      c('zoom-out', 'Alejar', () => this.zoomActive(-0.1), '⌘-'),
       c('zoom-fit', 'Ajustar a la ventana', () => this.zoom('fit'), '⌘0'),
       c('zoom-reset', 'Zoom 100 %', () => this.zoom('reset')),
       c('page-zoom-in', 'Zoom de página +', () => this.pageZoom(0.1)),

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, net, session, shell, type MenuItemConstructorOptions, type WebContents } from 'electron';
+import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, net, screen, session, shell, webContents, WebContentsView, type MenuItemConstructorOptions, type WebContents } from 'electron';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { SessionFlags, SyncEvent } from '../shared/types';
@@ -50,6 +50,146 @@ function persistSettings() {
 const toHost = (channel: string, ...args: unknown[]) => {
   if (win && !win.isDestroyed()) win.webContents.send(channel, ...args);
 };
+
+type Rect = { x: number; y: number; width: number; height: number };
+type Dock = 'right' | 'bottom' | 'left' | 'window';
+/** One DevTools host per pane, created once: setDevToolsWebContents can't be repointed reliably. */
+const devtoolsHosts = new Map<number, { view: WebContentsView; window?: BrowserWindow; dock: Dock }>();
+const DOCK_MARK = '__fronttier_dock__';
+/** Pane whose DevTools slot is being resized from the shell (see 'devtools-drag'). */
+let devtoolsDragging: number | null = null;
+
+// Runs inside the DevTools frontend. Docked, the frontend reserves part of itself
+// for the inspected page and draws its own splitter, which left an empty gap
+// beside our pane. So it always stays in its undocked layout (it fills the view),
+// while its "Dock side" buttons show our side and report clicks to us.
+// It waits for the UI: asking for the DockController earlier would create a stand-in
+// that the frontend then replaces.
+const dockHook = (dock: Dock) => `(async (side) => {
+  for (let i = 0; i < 100 && !document.querySelector('.tabbed-pane'); i++) await new Promise((r) => setTimeout(r, 100));
+  const UI = await import('devtools://devtools/bundled/ui/legacy/legacy.js');
+  const dc = UI.DockController.DockController.instance();
+  dc.__fronttierSide = side;
+  if (dc.__fronttier) return;
+  dc.__fronttier = true;
+  const set = dc.setDockSide.bind(dc);
+  // Switching the layout stores currentDockState, whose listener calls setDockSide
+  // again; those nested calls are ours, not the user's.
+  let busy = 0;
+  const undock = () => {
+    busy++;
+    try {
+      set('undocked');
+    } finally {
+      busy--;
+    }
+  };
+  dc.dockSide = () => dc.__fronttierSide;
+  dc.setDockSide = (s) => {
+    if (!busy && s !== dc.__fronttierSide) console.debug('${DOCK_MARK}' + JSON.stringify(s));
+    undock();
+  };
+  // Opened docked (see openDevtools); switch the layout to undocked now.
+  undock();
+})(${JSON.stringify(dock === 'window' ? 'undocked' : dock)})`;
+
+/**
+ * DevTools render into a native view we own. Docked, it sits over the slot the shell
+ * leaves beside the pane (the shell reports its bounds); "window" moves the same view
+ * into its own window. A <webview> host left the Elements panel empty.
+ */
+function devtoolsHost(id: number) {
+  let host = devtoolsHosts.get(id);
+  if (host) return host;
+  const wc = getWC(id);
+  const view = new WebContentsView();
+  view.setBackgroundColor('#000000');
+  wc.setDevToolsWebContents(view.webContents);
+  view.webContents.on('did-finish-load', () => view.webContents.executeJavaScript(dockHook(host!.dock)).catch(() => {}));
+  // Undocked, the frontend window.open()s a device-mode "toolbox" page, which showed
+  // up as an empty "DevTools" window. Panes have their own device emulation.
+  view.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  // While the shell resizes the slot, the cursor may pass over this view, which then
+  // gets the mouse instead of the shell: hand those moves (in window coordinates) back.
+  // The real cursor position is used, not the event's: the view itself moves as the slot resizes.
+  view.webContents.on('input-event', (_e, input: any) => {
+    if (devtoolsDragging !== id || !win || (input.type !== 'mouseMove' && input.type !== 'mouseUp')) return;
+    const cursor = screen.getCursorScreenPoint();
+    const content = win.getContentBounds();
+    toHost('devtools-drag', input.type === 'mouseUp' ? 'up' : 'move', cursor.x - content.x, cursor.y - content.y);
+  });
+  view.webContents.on('console-message', (e: any, _level?: number, legacyMessage?: string) => {
+    const message: string = e?.message ?? legacyMessage ?? '';
+    if (!message.startsWith(DOCK_MARK)) return;
+    const state = JSON.parse(message.slice(DOCK_MARK.length)) as string;
+    const dock: Dock = state === 'undocked' ? 'window' : (state as Dock);
+    if (['right', 'bottom', 'left', 'window'].includes(dock)) toHost('devtools-dock', id, dock);
+  });
+  wc.on('devtools-closed', () => {
+    detachDevtools(id);
+    toHost('devtools-closed', id);
+  });
+  host = { view, dock: 'right' };
+  devtoolsHosts.set(id, host);
+  wc.once('destroyed', () => {
+    detachDevtools(id);
+    devtoolsHosts.delete(id);
+    view.webContents.close();
+  });
+  return host;
+}
+
+/** Takes the DevTools view off screen (closing its window, if any). */
+function detachDevtools(id: number) {
+  const host = devtoolsHosts.get(id);
+  if (!host) return;
+  if (host.window) {
+    const w = host.window;
+    host.window = undefined;
+    if (!w.isDestroyed()) w.destroy();
+  }
+  if (win && !win.isDestroyed()) win.contentView.removeChildView(host.view);
+}
+
+function openDevtools(id: number, dock: Dock, bounds?: Rect) {
+  const wc = getWC(id);
+  const host = devtoolsHost(id);
+  if (dock !== 'window') {
+    if (host.window) {
+      const w = host.window;
+      host.window = undefined;
+      w.destroy();
+    }
+    win?.contentView.addChildView(host.view);
+    if (bounds) host.view.setBounds(bounds);
+    host.view.setVisible(true);
+  } else if (!host.window) {
+    win?.contentView.removeChildView(host.view);
+    const w = new BrowserWindow({ width: 1100, height: 720, title: 'DevTools', backgroundColor: '#000000', autoHideMenuBar: true });
+    host.window = w;
+    const fit = () => {
+      const [width, height] = w.getContentSize();
+      host.view.setBounds({ x: 0, y: 0, width, height });
+    };
+    w.contentView.addChildView(host.view);
+    host.view.setVisible(true);
+    fit();
+    w.on('resize', fit);
+    // Closing the window closes DevTools; devtools-closed then tells the shell.
+    w.on('closed', () => host.window === w && !wc.isDestroyed() && wc.closeDevTools());
+  }
+  host.dock = dock;
+  // Docked mode keeps the frontend's Dock side buttons; the hook drops the docked layout.
+  if (!wc.isDevToolsOpened()) wc.openDevTools({ mode: 'right' });
+  // Frontend already up (moving between sides): just update the side it shows.
+  if (host.view.webContents.getURL().startsWith('devtools://')) host.view.webContents.executeJavaScript(dockHook(dock)).catch(() => {});
+}
+
+function closeDevtools(id: number) {
+  detachDevtools(id);
+  const wc = webContents.fromId(id);
+  if (wc && !wc.isDestroyed() && wc.isDevToolsOpened()) wc.closeDevTools();
+}
 
 let clientScriptCache = '';
 const portal = new Portal(
@@ -250,8 +390,20 @@ function registerIpc() {
     if (kind === 'storage' || kind === 'all') await ses.clearStorageData();
   });
   h('session-flags', (_e, f: SessionFlags) => Object.assign(flags, f));
-  h('open-devtools', (_e, id: number) => getWC(id).openDevTools({ mode: 'detach' }));
-  h('inspect-element', (_e, id: number, x: number, y: number) => getWC(id).inspectElement(x, y));
+  h('open-devtools', (_e, id: number, dock?: Dock, bounds?: Rect) => openDevtools(id, dock ?? 'window', bounds));
+  h('close-devtools', (_e, id: number) => closeDevtools(id));
+  ipcMain.on('devtools-drag', (_e, id: number | null) => (devtoolsDragging = id));
+  // Docked host follows the shell's layout; hidden while shell overlays (menus, dialogs) are open.
+  ipcMain.on('devtools-bounds', (_e, id: number, bounds: Rect | null) => {
+    const host = devtoolsHosts.get(id);
+    if (!host || host.window) return;
+    if (bounds) host.view.setBounds(bounds);
+    host.view.setVisible(!!bounds);
+  });
+  h('inspect-element', (_e, id: number, x: number, y: number) => {
+    if (!getWC(id).isDevToolsOpened()) openDevtools(id, 'window');
+    getWC(id).inspectElement(x, y);
+  });
   h('portal-start', (_e, url: string, port: number, pub: boolean) => portal.start(url, port, pub));
   h('portal-stop', () => portal.stop());
   ipcMain.on('portal-send', (_e, ev: SyncEvent) => portal.broadcast(ev));

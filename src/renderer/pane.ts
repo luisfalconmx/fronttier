@@ -4,7 +4,7 @@ import type { WebviewTag } from 'electron';
 import type { PaneConfig, SyncEvent, Vitals } from '../shared/types';
 import type { App } from './app';
 import { DEVICES, GROUP_LABELS } from './devices';
-import { api, clear, h, icon, iconButton, menuList, popover } from './dom';
+import { api, clear, closePopover, h, icon, iconButton, menuList, popover } from './dom';
 import { paneFromDevice } from './state';
 
 const THRESHOLDS: Record<keyof Vitals, [number, number]> = {
@@ -126,6 +126,7 @@ export class PaneView {
           break;
         case 'user-input':
           this.lastInput = Date.now();
+          closePopover();
           break;
         case 'tool-result': {
           const w = this.toolWaiters.get(a);
@@ -391,7 +392,7 @@ export class PaneView {
           { label: 'Esquema de color', icon: 'scheme', hint: scheme, onclick: () => this.cycleScheme() },
           { label: 'Captura de este panel', icon: 'camera', onclick: () => this.app.screenshotPane(this, false) },
           { label: 'Captura de página completa', icon: 'fullPage', onclick: () => this.app.screenshotPane(this, true) },
-          { label: 'DevTools de Chromium', icon: 'devtools', onclick: () => this.wcId && api().openDevTools(this.wcId) },
+          { label: 'DevTools de Chromium', icon: 'devtools', onclick: () => this.app.openDevtools('window', this, false) },
           { label: 'Recargar este panel', icon: 'reload', onclick: () => this.webview.reload() },
           { label: c.showVitals ? 'Ocultar métricas (LCP, CLS…)' : 'Mostrar métricas (LCP, CLS…)', icon: 'vitals', onclick: () => this.update({ showVitals: !c.showVitals }) },
         ],

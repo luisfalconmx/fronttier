@@ -4,6 +4,7 @@ import { uid } from './dom';
 
 export type Layout = 'horizontal' | 'vertical' | 'focus' | 'full';
 export type Align = 'left' | 'center' | 'right';
+export type DevtoolsDock = 'right' | 'bottom' | 'left' | 'window';
 
 export interface TabState {
   id: string;
@@ -12,6 +13,8 @@ export interface TabState {
   favicon?: string;
   panes: PaneConfig[];
   css: string;
+  /** Per-tab layout; tabs saved before this existed fall back to Settings.layout. */
+  layout?: Layout;
 }
 
 export interface Settings {
@@ -26,12 +29,15 @@ export interface Settings {
   portalPublic: boolean;
   layout: Layout;
   align: Align;
+  devtoolsDock: DevtoolsDock;
+  /** Docked DevTools size in px (0 = default share). */
+  devtoolsWidth: number;
+  devtoolsHeight: number;
   zoom: number;
   zoomFit: boolean;
   pageZoom: number;
   panelOpen: boolean;
   panelTab: string;
-  panelWidth: number;
   headers: boolean;
   history: string[];
   bookmarks: { url: string; title: string }[];
@@ -92,8 +98,14 @@ export function presetPanes(key: string): PaneConfig[] {
   return (p.widths ?? []).map((w) => paneFromWidth(w));
 }
 
-export function newTab(url = '', panes?: PaneConfig[]): TabState {
-  return { id: uid(), url, title: 'Nueva pestaña', panes: panes ?? presetPanes('default'), css: '' };
+/** A plain desktop viewport at the screen's own density, for browsing in full mode. */
+export function browserPane(): PaneConfig {
+  return { ...paneFromDevice(deviceById('laptop-hd')!), name: 'Navegador', dpr: globalThis.devicePixelRatio || 1, deviceId: undefined };
+}
+
+/** New tabs open like a regular browser: one pane filling the area. */
+export function newTab(url = '', panes?: PaneConfig[], layout: Layout = 'full'): TabState {
+  return { id: uid(), url, title: 'Nueva pestaña', panes: panes ?? [browserPane()], css: '', layout };
 }
 
 export function defaultSettings(): Settings {
@@ -110,12 +122,14 @@ export function defaultSettings(): Settings {
     portalPublic: false,
     layout: 'horizontal',
     align: 'left',
+    devtoolsDock: 'right',
+    devtoolsWidth: 0,
+    devtoolsHeight: 0,
     zoom: 1,
     zoomFit: true,
     pageZoom: 1,
     panelOpen: true,
     panelTab: 'meta',
-    panelWidth: 380,
     headers: true,
     history: [],
     bookmarks: [],

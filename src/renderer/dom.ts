@@ -157,9 +157,29 @@ export function escapeHtml(s: string) {
 }
 
 let activeClose: (() => void) | undefined;
+type Avoid = { rect: DOMRect; side: 'right' | 'bottom' | 'left' };
+let avoidArea: (() => Avoid | null) | undefined;
+
+/** Area popovers must not cover (the docked DevTools: a native view would hide them). */
+export function setPopoverAvoid(fn: () => Avoid | null) {
+  avoidArea = fn;
+}
+let activeAnchor: HTMLElement | undefined;
+
+/** Closes the open popover, e.g. when the user clicks inside a pane (webview clicks never reach this document). */
+export function closePopover() {
+  activeClose?.();
+}
+addEventListener('blur', closePopover);
 
 /** Simple anchored dropdown. Closes on outside click or Escape. */
 export function popover(anchor: HTMLElement, content: HTMLElement, opts: { align?: 'left' | 'right'; width?: number; beside?: HTMLElement; onClose?: () => void } = {}) {
+  // Clicking the button of the open menu again closes it.
+  if (activeClose && activeAnchor === anchor) {
+    const closeOpen = activeClose;
+    closeOpen();
+    return closeOpen;
+  }
   activeClose?.();
   document.querySelectorAll('.popover').forEach((p) => p.remove());
   const pop = h('div', { class: 'popover', role: 'dialog' }, content);
@@ -188,11 +208,19 @@ export function popover(anchor: HTMLElement, content: HTMLElement, opts: { align
     pop.style.top = r.bottom + 6 + 'px';
     pop.style.maxHeight = innerHeight - r.bottom - 20 + 'px';
   }
+  const avoid = avoidArea?.();
+  if (avoid) {
+    const p = pop.getBoundingClientRect();
+    const a = avoid.rect;
+    if (avoid.side === 'right' && p.right > a.left) pop.style.left = Math.max(8, a.left - p.width - 8) + 'px';
+    if (avoid.side === 'left' && p.left < a.right) pop.style.left = Math.min(innerWidth - p.width - 8, a.right + 8) + 'px';
+    if (avoid.side === 'bottom' && p.bottom > a.top) pop.style.maxHeight = Math.max(120, a.top - p.top - 8) + 'px';
+  }
   const close = () => {
     if (!pop.isConnected) return;
     pop.remove();
     opts.onClose?.();
-    if (activeClose === close) activeClose = undefined;
+    if (activeClose === close) activeClose = activeAnchor = undefined;
     document.removeEventListener('mousedown', outside, true);
     document.removeEventListener('keydown', esc, true);
   };
@@ -201,6 +229,7 @@ export function popover(anchor: HTMLElement, content: HTMLElement, opts: { align
   };
   const esc = (e: KeyboardEvent) => e.key === 'Escape' && close();
   activeClose = close;
+  activeAnchor = anchor;
   setTimeout(() => {
     document.addEventListener('mousedown', outside, true);
     document.addEventListener('keydown', esc, true);
