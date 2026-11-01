@@ -63,12 +63,7 @@ export class PaneView {
       this.nameLabel,
       this.sizeLabel,
       h('span', { class: 'spacer' }),
-      iconButton('emulate', 'Dispositivo', (e) => this.deviceMenu(e.currentTarget as HTMLElement)),
-      iconButton('rotate', 'Rotar', () => this.update({ width: this.cfg.height, height: this.cfg.width })),
-      iconButton('moon', 'Esquema de color de este panel', () => this.cycleScheme()),
-      iconButton('camera', 'Captura de este panel', () => app.screenshotPane(this, false)),
-      iconButton('devtools', 'DevTools de Chromium', () => this.wcId && api().openDevTools(this.wcId)),
-      iconButton('more', 'Más', (e) => this.moreMenu(e.currentTarget as HTMLElement)),
+      iconButton('more', 'Acciones del panel', (e) => this.moreMenu(e.currentTarget as HTMLElement)),
     );
     this.frame = h('div', { class: 'pane-frame' });
     this.foot = h('div', { class: 'pane-foot' });
@@ -277,7 +272,7 @@ export class PaneView {
     const vp = this.viewport;
     const c = this.cfg;
     const totalH = this.override?.height ?? c.height;
-    this.sizeLabel.textContent = `${vp.width} × ${vp.height}${c.dpr !== 1 ? ' @' + c.dpr + 'x' : ''}${c.touch ? ' · táctil' : ''}`;
+    this.sizeLabel.textContent = `${vp.width} × ${vp.height}`;
     this.el.style.width = vp.width + 'px';
     const parts: Node[] = [];
     if (vp.ui.top) parts.push(h('div', { class: 'mobile-ui top', style: { height: vp.ui.top + 'px' } }, h('span', null, '9:41'), h('span', { class: 'url-pill' }, this.urlHost())));
@@ -377,21 +372,42 @@ export class PaneView {
       return h('label', { class: 'mini-check' }, input, label);
     };
     const ua = h('input', { type: 'text', placeholder: 'User agent por defecto', value: c.ua ?? '', onchange: () => this.update({ ua: ua.value.trim() || undefined }) });
+    const vp = this.viewport;
+    const scheme = { '': 'Esquema global', dark: 'Oscuro', light: 'Claro' }[c.colorScheme ?? ''];
     const body = h(
       'div',
       { class: 'pane-settings' },
+      h(
+        'div',
+        { class: 'pane-info' },
+        h('strong', { class: 'ellipsis' }, c.name),
+        h('div', { class: 'pane-info-meta' }, h('span', null, `${vp.width} × ${vp.height} px`), h('span', null, `${c.dpr}x DPR`), c.touch ? h('span', null, 'Táctil') : null, c.mobile ? h('span', null, 'Móvil') : null),
+      ),
+      menuList(
+        [
+          { label: 'Cambiar dispositivo…', icon: 'emulate', onclick: () => setTimeout(() => this.deviceMenu(anchor)) },
+          { label: 'Rotar', icon: 'rotate', onclick: () => this.update({ width: this.cfg.height, height: this.cfg.width }) },
+          { label: 'Esquema de color', icon: 'scheme', hint: scheme, onclick: () => this.cycleScheme() },
+          { label: 'Captura de este panel', icon: 'camera', onclick: () => this.app.screenshotPane(this, false) },
+          { label: 'Captura de página completa', icon: 'fullPage', onclick: () => this.app.screenshotPane(this, true) },
+          { label: 'DevTools de Chromium', icon: 'devtools', onclick: () => this.wcId && api().openDevTools(this.wcId) },
+          { label: 'Recargar este panel', icon: 'reload', onclick: () => this.webview.reload() },
+        ],
+        () => close(),
+      ),
+      h('div', { class: 'menu-sep' }),
+      h('div', { class: 'menu-heading' }, 'Ajustes'),
       h('div', { class: 'row' }, num('Ancho', 'width'), num('Alto', 'height'), num('DPR', 'dpr')),
       h('div', { class: 'row' }, check('Móvil', 'mobile'), check('Táctil', 'touch'), c.ui ? check('Barras del navegador', 'showUI') : null),
       h('label', { class: 'mini-field wide' }, 'User agent', ua),
       menuList(
         [
-          { label: 'Recargar este panel', onclick: () => this.webview.reload() },
-          { label: 'Captura de página completa', onclick: () => this.app.screenshotPane(this, true) },
-          { label: 'Duplicar panel', onclick: () => this.app.addPane({ ...structuredClone(this.cfg), name: this.cfg.name + ' (copia)' }) },
-          { label: 'Mover a la izquierda', onclick: () => this.app.movePane(this, -1) },
-          { label: 'Mover a la derecha', onclick: () => this.app.movePane(this, 1) },
           'sep',
-          { label: 'Quitar panel', danger: true, onclick: () => this.app.removePane(this) },
+          { label: 'Duplicar panel', icon: 'duplicate', onclick: () => this.app.addPane({ ...structuredClone(this.cfg), name: this.cfg.name + ' (copia)' }) },
+          { label: 'Mover a la izquierda', icon: 'moveLeft', onclick: () => this.app.movePane(this, -1) },
+          { label: 'Mover a la derecha', icon: 'moveRight', onclick: () => this.app.movePane(this, 1) },
+          'sep',
+          { label: 'Quitar panel', icon: 'trash', danger: true, onclick: () => this.app.removePane(this) },
         ],
         () => close(),
       ),

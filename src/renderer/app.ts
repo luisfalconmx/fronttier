@@ -64,7 +64,8 @@ export class App {
   private sideTabs = h('nav', { class: 'side-tabs', 'aria-label': 'Herramientas' });
   private sideBody = h('div', { class: 'side-body' });
   private status = h('footer', { class: 'status' });
-  private ram = h('span', { class: 'ram', title: 'Memoria usada por Fronttier' });
+  private ramText = h('span');
+  private ram = h('span', { class: 'ram', title: 'Memoria usada por Fronttier' }, icon('ram', 13), this.ramText);
 
   async init() {
     const saved = (await api().settingsGet()).app as Partial<Settings> | undefined;
@@ -128,8 +129,10 @@ export class App {
       }
     });
     this.urlInput.addEventListener('focus', () => this.urlInput.select());
-    this.recordBtn = iconButton('record', 'Grabar video (Ctrl/Cmd+Shift+E)', () => this.toggleRecording(), 'record-btn');
-    this.syncBtn = iconButton('sync', 'Sincronización', (e) => this.syncMenu(e.currentTarget as HTMLElement));
+    const sideAction = (name: string, title: string, onclick: (e: MouseEvent) => void, extra = '') =>
+      h('button', { class: 'side-tab side-action ' + extra, title, 'aria-label': title, onclick }, icon(name, 18));
+    this.recordBtn = sideAction('record', 'Grabar video (Ctrl/Cmd+Shift+E)', () => this.toggleRecording(), 'record-btn');
+    this.syncBtn = sideAction('sync', 'Sincronización', (e) => this.syncMenu(e.currentTarget as HTMLElement));
     this.starBtn = iconButton('star', 'Marcador', () => this.toggleBookmark());
 
     const toolbar = h(
@@ -139,13 +142,10 @@ export class App {
       iconButton('forward', 'Adelante', () => this.history(1)),
       iconButton('reload', 'Recargar todo (Ctrl/Cmd+R)', () => this.reloadAll(false)),
       h('div', { class: 'url-box' }, this.urlInput, this.starBtn, this.urlList),
+      iconButton('zoomOut', 'Alejar (Ctrl/Cmd+-)', () => this.zoom(-0.1)),
+      iconButton('zoomIn', 'Acercar (Ctrl/Cmd+=)', () => this.zoom(0.1)),
       h('button', { class: 'btn', title: 'Agregar panel', onclick: (e: MouseEvent) => this.addPaneMenu(e.currentTarget as HTMLElement) }, icon('plus'), 'Panel'),
       h('button', { class: 'btn', title: 'Diseño', onclick: (e: MouseEvent) => this.layoutMenu(e.currentTarget as HTMLElement) }, icon('layout'), this.zoomLabel),
-      this.syncBtn,
-      iconButton('camera', 'Capturas', (e) => this.screenshotMenu(e.currentTarget as HTMLElement)),
-      this.recordBtn,
-      iconButton('portal', 'Portal: probar en dispositivos reales', () => this.openPanel('portal')),
-      iconButton('command', 'Barra de comandos (Ctrl/Cmd+K)', () => this.runCommand('command')),
       iconButton('panel', 'Panel lateral (Ctrl/Cmd+\\)', () => this.togglePanel()),
     );
     this.wrap.append(this.sizer);
@@ -156,6 +156,14 @@ export class App {
     this.side.append(resizer, this.sideTabs, this.sideBody);
     this.side.style.width = this.settings.panelWidth + 'px';
     for (const p of PANELS) this.sideTabs.append(h('button', { class: 'side-tab', 'data-id': p.id, title: p.title, 'aria-label': p.title, onclick: () => this.openPanel(p.id) }, icon(p.icon, 18)));
+    // Global actions live at the bottom of the rail (Portal already has its own tab above).
+    this.sideTabs.append(
+      h('div', { class: 'side-sep', role: 'separator' }),
+      this.syncBtn,
+      sideAction('camera', 'Capturas', (e) => this.screenshotMenu(e.currentTarget as HTMLElement)),
+      this.recordBtn,
+      sideAction('command', 'Barra de comandos (Ctrl/Cmd+K)', () => this.runCommand('command')),
+    );
     clear(root, h('div', { class: 'tabbar' }, this.tabsEl, iconButton('plus', 'Nueva pestaña (Ctrl/Cmd+T)', () => this.openTab(''))), toolbar, h('div', { class: 'workspace' }, main, this.side), this.status);
     this.buildFindBar();
     this.renderHistory();
@@ -766,7 +774,7 @@ export class App {
   private async updateRam() {
     try {
       const m = await api().metrics();
-      this.ram.textContent = `RAM ${fmtMB(m.totalMB)}`;
+      this.ramText.textContent = `RAM ${fmtMB(m.totalMB)}`;
       this.ram.title = m.processes.map((p) => `${p.type}: ${fmtMB(p.mb)}`).join('\n');
       this.events.emit('metrics', m);
     } catch {}
@@ -790,15 +798,15 @@ export class App {
     ].filter(Boolean) as string[];
     clear(
       this.status,
+      h('span', { class: 'version' }, icon('tag', 13), `v${version}`),
+      h('span', null, icon('panes', 13), `${this.panes.length} paneles`),
       this.ram,
-      h('span', { class: 'version' }, `v${version}`),
-      h('span', null, `${this.panes.length} paneles`),
-      syncOn === 6 ? null : h('span', { class: 'warn' }, syncOn ? `Sincronización parcial (${syncOn}/6)` : 'Sin sincronización'),
-      overflowing ? h('button', { class: 'warn link', onclick: () => this.setTools({ overflow: true }) }, `⚠ ${overflowing} con desborde horizontal`) : null,
-      this.portal.running ? h('button', { class: 'link', onclick: () => this.openPanel('portal') }, `Portal activo · ${this.portal.clients} dispositivo(s)`) : null,
-      this.flags.noCSP ? h('span', { class: 'warn' }, 'CSP desactivado') : null,
-      this.flags.cors ? h('span', { class: 'warn' }, 'CORS abierto') : null,
-      emuTags.length ? h('span', { class: 'emu-tags', title: emuTags.join(' · ') }, emuTags.join(' · ')) : null,
+      syncOn === 6 ? null : h('span', { class: 'warn' }, icon('sync', 13), syncOn ? `Sincronización parcial (${syncOn}/6)` : 'Sin sincronización'),
+      overflowing ? h('button', { class: 'warn link', onclick: () => this.setTools({ overflow: true }) }, icon('warn', 13), `${overflowing} con desborde horizontal`) : null,
+      this.portal.running ? h('button', { class: 'link', onclick: () => this.openPanel('portal') }, icon('portal', 13), `Portal activo · ${this.portal.clients} dispositivo(s)`) : null,
+      this.flags.noCSP ? h('span', { class: 'warn' }, icon('shield', 13), 'CSP desactivado') : null,
+      this.flags.cors ? h('span', { class: 'warn' }, icon('shield', 13), 'CORS abierto') : null,
+      emuTags.length ? h('span', { class: 'emu-tags', title: emuTags.join(' · ') }, icon('emulate', 13), emuTags.join(' · ')) : null,
     );
   }
 

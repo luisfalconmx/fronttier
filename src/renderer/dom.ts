@@ -1,3 +1,9 @@
+import {
+  Accessibility, ArrowLeft, ArrowLeftToLine, ArrowRight, ArrowRightToLine, Bug, Camera, Check, Circle, CodeXml, Columns3, Command, Copy, CopyPlus,
+  createElement, Database, Download, Ellipsis, Eye, FileText, Folder, Gauge, LayoutDashboard, ListTree, Maximize, MemoryStick, Moon, Network, PanelRight,
+  Pin, Plus, QrCode, RefreshCcw, RotateCcwSquare, RotateCw, ScrollText, Search, Settings, Share2, ShieldOff, Smartphone, SquareCode, SquareTerminal, Star,
+  Sun, SunMoon, Tag, Trash2, TriangleAlert, X, Zap, ZoomIn, ZoomOut, type IconNode,
+} from 'lucide';
 import type { FronttierAPI } from '../shared/api';
 
 declare global {
@@ -42,65 +48,71 @@ export function clear(e: Element, ...children: Child[]) {
   return e;
 }
 
-const PATHS: Record<string, string> = {
-  back: 'M15 18l-6-6 6-6',
-  forward: 'M9 18l6-6-6-6',
-  reload: 'M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5',
-  plus: 'M12 5v14M5 12h14',
-  close: 'M6 6l12 12M18 6L6 18',
-  layout: 'M3 4h18v16H3zM9 4v16M15 4v16',
-  sync: 'M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4',
-  camera: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
-  record: 'M12 12m-6 0a6 6 0 1 0 12 0a6 6 0 1 0-12 0',
-  portal: 'M5 5h6v6H5zM13 13h6v6h-6zM13 5h6v6h-6zM5 13h6v6H5z',
-  command: 'M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z',
-  panel: 'M3 4h18v16H3zM15 4v16',
-  rotate: 'M4 4v6h6M20 20v-6h-6M5 15a8 8 0 0 0 14 1M19 9A8 8 0 0 0 5 8',
-  devtools: 'M8 9l-4 3 4 3M16 9l4 3-4 3M13 6l-2 12',
-  more: 'M5 12h.01M12 12h.01M19 12h.01',
-  star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z',
-  elements: 'M8 9l-4 3 4 3M16 9l4 3-4 3',
-  console: 'M4 17l6-5-6-5M12 19h8',
-  network: 'M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4',
-  perf: 'M3 12h4l3-8 4 16 3-8h4',
-  meta: 'M4 6h16M4 12h10M4 18h7',
-  social: 'M18 8a3 3 0 1 0-3-3M6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0-3-3M8.6 13.5l6.8 4M15.4 6.5l-6.8 4',
-  outline: 'M4 5h16M8 10h12M8 15h12M12 20h8',
-  a11y: 'M12 4a2 2 0 1 0 0 .01M5 8l7 2 7-2M12 10v5l-3 6M12 15l3 6',
-  eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
-  emulate: 'M7 3h10v18H7zM11 18h2',
-  debug: 'M8 8V6a4 4 0 0 1 8 0v2M6 8h12v6a6 6 0 0 1-12 0zM3 13h3M18 13h3M4 19l3-2M20 19l-3-2',
-  storage: 'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
-  settings: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 4.1V4a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.1a2 2 0 1 1 0 4z',
-  moon: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
-  sun: 'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4',
-  search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5',
-  copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
-  trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
-  warn: 'M12 3l10 18H2zM12 10v4M12 17h.01',
-  check: 'M5 12l5 5L20 7',
-  zoomFit: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
-  folder: 'M3 6h6l2 2h10v11H3z',
-  download: 'M12 4v12M7 11l5 5 5-5M5 20h14',
-  pin: 'M12 17v5M8 3h8l-1 6 3 3H6l3-3z',
-  bolt: 'M13 2L4 14h7l-1 8 9-12h-7z',
+// App icon names → Lucide icons (https://lucide.dev). Named imports keep the bundle to the ones used.
+const ICONS: Record<string, IconNode> = {
+  back: ArrowLeft,
+  forward: ArrowRight,
+  reload: RotateCw,
+  plus: Plus,
+  close: X,
+  layout: LayoutDashboard,
+  sync: RefreshCcw,
+  camera: Camera,
+  record: Circle,
+  portal: QrCode,
+  command: Command,
+  panel: PanelRight,
+  rotate: RotateCcwSquare,
+  devtools: SquareCode,
+  more: Ellipsis,
+  star: Star,
+  elements: CodeXml,
+  console: SquareTerminal,
+  network: Network,
+  perf: Gauge,
+  meta: FileText,
+  social: Share2,
+  outline: ListTree,
+  a11y: Accessibility,
+  eye: Eye,
+  emulate: Smartphone,
+  debug: Bug,
+  storage: Database,
+  settings: Settings,
+  moon: Moon,
+  sun: Sun,
+  scheme: SunMoon,
+  search: Search,
+  copy: Copy,
+  duplicate: CopyPlus,
+  trash: Trash2,
+  warn: TriangleAlert,
+  check: Check,
+  zoomFit: Maximize,
+  zoomIn: ZoomIn,
+  zoomOut: ZoomOut,
+  folder: Folder,
+  download: Download,
+  pin: Pin,
+  bolt: Zap,
+  tag: Tag,
+  panes: Columns3,
+  ram: MemoryStick,
+  shield: ShieldOff,
+  moveLeft: ArrowLeftToLine,
+  moveRight: ArrowRightToLine,
+  fullPage: ScrollText,
 };
 
 export function icon(name: string, size = 16) {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('width', String(size));
-  svg.setAttribute('height', String(size));
-  svg.setAttribute('fill', name === 'record' ? 'currentColor' : 'none');
-  svg.setAttribute('stroke', 'currentColor');
-  svg.setAttribute('stroke-width', '1.8');
-  svg.setAttribute('stroke-linecap', 'round');
-  svg.setAttribute('stroke-linejoin', 'round');
-  svg.setAttribute('aria-hidden', 'true');
+  const svg = createElement(ICONS[name] ?? Ellipsis, {
+    width: size,
+    height: size,
+    'stroke-width': 1.8,
+    fill: name === 'record' ? 'currentColor' : 'none',
+    'aria-hidden': 'true',
+  });
   svg.classList.add('icon');
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute('d', PATHS[name] ?? PATHS.more);
-  svg.appendChild(path);
   return svg;
 }
 
@@ -148,11 +160,19 @@ export function popover(anchor: HTMLElement, content: HTMLElement, opts: { align
   document.body.appendChild(pop);
   const r = anchor.getBoundingClientRect();
   const pw = pop.offsetWidth;
-  let left = opts.align === 'right' ? r.right - pw : r.left;
-  left = Math.max(8, Math.min(left, innerWidth - pw - 8));
-  pop.style.left = left + 'px';
-  pop.style.top = r.bottom + 6 + 'px';
-  pop.style.maxHeight = innerHeight - r.bottom - 20 + 'px';
+  if (anchor.closest('.side-tabs')) {
+    // Side rail: open beside the button, toward the panes.
+    const top = Math.max(8, Math.min(r.top, innerHeight - pop.offsetHeight - 8));
+    pop.style.left = Math.max(8, r.left - pw - 6) + 'px';
+    pop.style.top = top + 'px';
+    pop.style.maxHeight = innerHeight - top - 8 + 'px';
+  } else {
+    let left = opts.align === 'right' ? r.right - pw : r.left;
+    left = Math.max(8, Math.min(left, innerWidth - pw - 8));
+    pop.style.left = left + 'px';
+    pop.style.top = r.bottom + 6 + 'px';
+    pop.style.maxHeight = innerHeight - r.bottom - 20 + 'px';
+  }
   const close = () => {
     pop.remove();
     document.removeEventListener('mousedown', outside, true);
@@ -169,7 +189,7 @@ export function popover(anchor: HTMLElement, content: HTMLElement, opts: { align
   return close;
 }
 
-export function menuList(items: ({ label: string; hint?: string; onclick: () => void; checked?: boolean; danger?: boolean } | 'sep' | { heading: string })[], close?: () => void) {
+export function menuList(items: ({ label: string; hint?: string; icon?: string; onclick: () => void; checked?: boolean; danger?: boolean } | 'sep' | { heading: string })[], close?: () => void) {
   return h(
     'div',
     { class: 'menu-list', role: 'menu' },
@@ -179,7 +199,7 @@ export function menuList(items: ({ label: string; hint?: string; onclick: () => 
       return h(
         'button',
         { class: 'menu-item' + (it.danger ? ' danger' : ''), role: 'menuitem', onclick: () => (it.onclick(), close?.()) },
-        h('span', { class: 'check' }, it.checked ? '✓' : ''),
+        h('span', { class: 'check' }, it.checked ? icon('check', 14) : it.icon ? icon(it.icon, 14) : ''),
         h('span', { class: 'label' }, it.label),
         it.hint ? h('span', { class: 'hint' }, it.hint) : null,
       );
