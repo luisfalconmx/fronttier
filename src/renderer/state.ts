@@ -2,7 +2,7 @@ import type { Device, Emulation, PaneConfig, PaneToolsState, SyncFlags } from '.
 import { deviceById, PRESETS } from './devices';
 import { uid } from './dom';
 
-export type Layout = 'horizontal' | 'vertical' | 'canvas' | 'focus' | 'split' | 'full';
+export type Layout = 'horizontal' | 'vertical' | 'focus' | 'full';
 export type Align = 'left' | 'center' | 'right';
 
 export interface TabState {
@@ -35,6 +35,8 @@ export interface Settings {
   headers: boolean;
   history: string[];
   bookmarks: { url: string; title: string }[];
+  /** Page URLs whose CSP notice was already shown (it appears once per URL). */
+  cspSeen: string[];
   workspaces: (PaneConfig[] | null)[];
   emu: Emulation;
   tabs: TabState[];
@@ -117,6 +119,7 @@ export function defaultSettings(): Settings {
     headers: true,
     history: [],
     bookmarks: [],
+    cspSeen: [],
     workspaces: [null, null, null, null, null],
     emu: { ...DEFAULT_EMULATION },
     tabs: [tab],

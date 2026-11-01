@@ -25,9 +25,7 @@ class Emitter {
 const LAYOUTS: [Layout, string][] = [
   ['horizontal', 'Horizontal'],
   ['vertical', 'Vertical'],
-  ['canvas', 'Canvas'],
   ['focus', 'Focus'],
-  ['split', 'Split'],
   ['full', 'Full'],
 ];
 const ALIGNS: [Align, string][] = [
@@ -35,8 +33,8 @@ const ALIGNS: [Align, string][] = [
   ['center', 'Center'],
   ['right', 'Right'],
 ];
-/** Layouts that show only the selected pane (split: it and its neighbour). */
-const SOLO = new Set<Layout>(['focus', 'split', 'full']);
+/** Layouts that show only the selected pane. */
+const SOLO = new Set<Layout>(['focus', 'full']);
 
 export class App {
   settings: Settings = defaultSettings();
@@ -70,6 +68,8 @@ export class App {
   private sizer = h('div', { class: 'panes-sizer' });
   private inner = h('div', { class: 'panes' });
   private start = h('div', { class: 'start' });
+  private focusBar = h('div', { class: 'focus-bar hidden', role: 'toolbar', 'aria-label': 'Paneles' });
+  private cspNotice = h('div', { class: 'csp-notice hidden', role: 'alertdialog', 'aria-label': 'Cabecera CSP detectada' });
   private findBar = h('div', { class: 'find-bar hidden' });
   private side = h('aside', { class: 'side' });
   private sideTabs = h('nav', { class: 'side-tabs', 'aria-label': 'Herramientas' });
@@ -84,7 +84,7 @@ export class App {
       const d = defaultSettings();
       this.settings = { ...d, ...saved, emu: { ...DEFAULT_EMULATION, ...saved.emu, geo: saved.emu?.geo ?? DEFAULT_EMULATION.geo }, sync: { ...d.sync, ...saved.sync } };
       if (!this.settings.tabs?.length) this.settings.tabs = d.tabs;
-      if ((this.settings.layout as string) === 'grid') this.settings.layout = 'canvas';
+      if (!LAYOUTS.some(([l]) => l === this.settings.layout)) this.settings.layout = 'horizontal';
     }
     this.tab = this.settings.tabs.find((t) => t.id === this.settings.activeTab) ?? this.settings.tabs[0];
     this.applyTheme();
@@ -163,7 +163,7 @@ export class App {
     );
     this.wrap.append(this.sizer);
     this.sizer.append(this.inner);
-    const main = h('main', { class: 'main' }, this.findBar, this.wrap, this.start);
+    const main = h('main', { class: 'main' }, this.findBar, this.focusBar, this.wrap, this.start, this.cspNotice);
     const resizer = h('div', { class: 'side-resizer', title: 'Arrastra para cambiar el ancho' });
     resizer.addEventListener('mousedown', (e) => this.resizeSide(e));
     this.side.append(resizer, this.sideTabs, this.sideBody);
@@ -327,8 +327,10 @@ export class App {
       this.toast('Panel agregado. Abre una URL para verlo.');
       return;
     }
-    this.createPane(cfg);
+    const p = this.createPane(cfg);
     this.persistTab();
+    // In focus/full the new pane would be off-stage; switch to it right away.
+    if (SOLO.has(this.settings.layout) && p) this.select(p);
     this.relayout();
   }
 
@@ -428,25 +430,21 @@ export class App {
     this.inner.className = 'panes layout-' + L + ' align-' + this.settings.align + (this.settings.headers ? '' : ' no-headers');
     this.wrap.classList.remove('align-left', 'align-center', 'align-right');
     this.wrap.classList.add('align-' + this.settings.align);
-    const i = focused ? this.panes.indexOf(focused) : -1;
-    const partner = L === 'split' ? (this.panes[i + 1] ?? this.panes[i - 1]) : undefined;
-    const shown = new Set(SOLO.has(L) ? [focused, partner].filter(Boolean) : this.panes);
+    const shown = new Set(SOLO.has(L) ? [focused] : this.panes);
     for (const p of this.panes) p.el.classList.toggle('offstage', !shown.has(p));
+    this.renderFocusBar();
+    // No scrollbars in full, so the area is measured at its real size.
+    this.wrap.classList.toggle('full', L === 'full');
     const wrapW = this.wrap.clientWidth;
     const wrapH = this.wrap.clientHeight;
-    // Full and split stretch their panes to fill the area instead of zooming them.
-    const stretched = L === 'full' || L === 'split';
-    const fillH = Math.max(300, wrapH - (this.settings.headers ? 72 : 40));
-    if (stretched && focused) {
-      const cols = shown.size;
-      const w = Math.max(320, Math.floor((wrapW - 16 * (cols + 1)) / cols));
-      for (const p of shown) p!.setOverride({ width: w, height: fillH });
-    }
-    for (const p of this.panes) if (!stretched || !shown.has(p)) p.setOverride(null);
+    // Full turns the selected pane into the whole main area: no header, no gaps, no zoom.
+    const full = L === 'full';
+    if (full && focused) focused.setOverride({ width: wrapW, height: wrapH });
+    for (const p of this.panes) if (!full || p !== focused) p.setOverride(null);
 
-    let s = this.settings.zoomFit || stretched ? 1 : this.settings.zoom;
+    let s = this.settings.zoomFit || full ? 1 : this.settings.zoom;
     const visible = this.panes.filter((p) => shown.has(p));
-    if (this.settings.zoomFit && visible.length && !stretched) {
+    if (this.settings.zoomFit && visible.length && !full) {
       const gap = 16;
       const widths = visible.map((p) => p.el.offsetWidth);
       const heights = visible.map((p) => p.el.offsetHeight);
@@ -460,7 +458,6 @@ export class App {
     }
     this.scale = s;
     this.inner.style.transform = `scale(${s})`;
-    this.inner.style.width = L === 'canvas' ? Math.max(400, (wrapW - 8) / s) + 'px' : '';
     // Solo layouts span the visible area so alignment has room to act; wider content just scrolls.
     this.inner.style.minWidth = SOLO.has(L) ? wrapW / s + 'px' : '';
     requestAnimationFrame(() => {
@@ -471,6 +468,71 @@ export class App {
     this.zoomOutBtn.title = `Alejar (Ctrl/Cmd+-) · Zoom ${pct}`;
     this.zoomInBtn.title = `Acercar (Ctrl/Cmd+=) · Zoom ${pct}`;
     this.renderStatus();
+  }
+
+  /** Polypane-style notice: the page sends a CSP header that can block Fronttier's injected tools. */
+  private showCspNotice(url: string) {
+    let key: string;
+    try {
+      const u = new URL(url);
+      key = u.origin + u.pathname;
+    } catch {
+      return;
+    }
+    if (this.flags.noCSP || this.settings.cspSeen.includes(key)) return;
+    this.settings.cspSeen = [key, ...this.settings.cspSeen].slice(0, 500);
+    this.save();
+    const hide = () => this.cspNotice.classList.add('hidden');
+    clear(
+      this.cspNotice,
+      h(
+        'div',
+        { class: 'csp-head' },
+        icon('warn', 20),
+        h('div', { class: 'grow' }, h('strong', null, 'Este sitio envía una cabecera CSP'), h('div', { class: 'muted small' }, 'Puede impedir que Fronttier funcione correctamente.')),
+        iconButton('close', 'Cerrar', hide),
+      ),
+      h(
+        'div',
+        { class: 'csp-body' },
+        h(
+          'p',
+          null,
+          h('strong', null, 'Content-Security-Policy'),
+          ' es una cabecera que impide que código de terceros haga cambios en la página. ',
+          h('button', { class: 'link', onclick: () => api().openExternal('https://developer.mozilla.org/es/docs/Web/HTTP/CSP') }, 'Más información sobre CSP'),
+        ),
+        h('p', null, h('strong', null, 'Desactiva las cabeceras CSP'), ' para usar todas las herramientas de Fronttier en este sitio.'),
+      ),
+      h(
+        'div',
+        { class: 'csp-foot' },
+        h('span', { class: 'muted small' }, 'Se muestra una vez por URL.'),
+        h('button', { class: 'btn primary', onclick: async () => (hide(), await this.setSessionFlags({ noCSP: true }), this.reloadAll(false)) }, 'Desactivar cabeceras CSP'),
+      ),
+    );
+    this.cspNotice.classList.remove('hidden');
+  }
+
+  /** Focus mode: quick switcher between panes, plus a way to add one. */
+  private renderFocusBar() {
+    const on = this.settings.layout === 'focus' && this.panes.length > 0;
+    this.focusBar.classList.toggle('hidden', !on);
+    if (!on) return;
+    const current = this.primary();
+    clear(
+      this.focusBar,
+      this.panes.map((p) =>
+        h(
+          'button',
+          { class: 'focus-chip' + (p === current ? ' on' : ''), title: `${p.cfg.name} · ${p.cfg.width} × ${p.cfg.height}`, onclick: () => this.select(p) },
+          icon(p.cfg.mobile ? 'emulate' : 'monitor', 14),
+          h('span', { class: 'ellipsis' }, p.cfg.name),
+          h('small', null, `${p.cfg.width}×${p.cfg.height}`),
+        ),
+      ),
+      iconButton('addPane', 'Agregar panel', (e) => this.addPaneMenu(e.currentTarget as HTMLElement)),
+    );
   }
 
   setAlign(a: Align) {
@@ -868,6 +930,7 @@ export class App {
     });
     a.on('open-tab', (url: string) => this.openTab(url, structuredClone(this.tab.panes).map((p) => ({ ...p, id: Math.random().toString(36).slice(2) }))));
     a.on('toast', (msg: string) => this.toast(msg));
+    a.on('csp-detected', (url: string) => this.showCspNotice(url));
     a.on('portal-event', (ev: SyncEvent) => {
       if (ev.t === 'nav') {
         if (ev.url !== this.tab.url) this.navigate(ev.url);

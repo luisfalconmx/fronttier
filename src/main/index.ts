@@ -67,6 +67,9 @@ function configureSession() {
   ses.setPermissionRequestHandler((_wc, permission, cb) => cb(allowed.has(permission)));
   ses.setPermissionCheckHandler((_wc, permission) => allowed.has(permission));
   ses.webRequest.onHeadersReceived((details, cb) => {
+    if (!flags.noCSP && details.resourceType === 'mainFrame' && Object.keys(details.responseHeaders ?? {}).some((k) => k.toLowerCase() === 'content-security-policy')) {
+      toHost('csp-detected', details.url);
+    }
     if (!flags.noCSP && !flags.cors) return cb({});
     const headers = { ...(details.responseHeaders ?? {}) };
     for (const key of Object.keys(headers)) {

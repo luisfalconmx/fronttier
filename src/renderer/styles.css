@@ -136,7 +136,11 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .panes-sizer { position: relative; }
 .panes { display: flex; gap: 16px; padding: 16px; align-items: flex-start; transform-origin: 0 0; width: max-content; }
 .panes.layout-vertical { flex-direction: column; }
-.panes.layout-canvas { flex-wrap: wrap; width: auto; }
+/* Full: the selected pane is the main area itself — no padding, header or border. */
+.panes.layout-full { padding: 0; gap: 0; }
+.panes-wrap.full { overflow: hidden; }
+.panes.layout-full .pane-head, .panes.layout-full .pane-foot { display: none; }
+.panes.layout-full .pane-frame { box-shadow: none; }
 /* Alignment: the scaled sizer moves inside the scroll area; panes move inside it. */
 .panes-wrap.align-center .panes-sizer { margin-inline: auto; }
 .panes-wrap.align-right .panes-sizer { margin-left: auto; }
@@ -159,8 +163,11 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .pane.loading .pane-head { background-image: linear-gradient(90deg, transparent, var(--accent-2), transparent); background-size: 40% 100%; background-repeat: no-repeat; animation: loading 1.2s infinite linear; }
 @keyframes loading { from { background-position: -40% 0; } to { background-position: 140% 0; } }
 .pane-body { position: relative; }
-.pane-frame { position: relative; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
-.pane-frame webview { display: flex; flex: none; border: 0; background: #fff; }
+/* Gray hairline so dark sites stay distinguishable from the black canvas. The frame
+   and webview have no background of their own: at fractional zoom a white one bled
+   through the antialiased edges as phantom white borders on dark pages. */
+.pane-frame { position: relative; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 0 1px var(--line-2); }
+.pane-frame webview { display: flex; flex: none; border: 0; }
 .pane-foot { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 0; font-size: 11px; }
 .no-headers .pane-foot { display: none; }
 .vital { display: inline-flex; gap: 4px; align-items: baseline; padding: 1px 6px; border-radius: 4px; background: var(--bg-3); font-variant-numeric: tabular-nums; }
@@ -192,6 +199,22 @@ button.link { background: none; border: 0; padding: 0; color: var(--accent); cur
 .recent { display: grid; gap: 4px; text-align: left; }
 .recent .link { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .logo { display: block; width: 72px; height: 72px; margin: 0 auto; }
+
+/* Focus mode pane switcher */
+.focus-bar { display: flex; align-items: center; gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--bg); overflow-x: auto; scrollbar-width: none; flex: none; }
+.focus-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 220px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg-2); color: var(--fg-2); cursor: default; white-space: nowrap; flex: none; }
+.focus-chip:hover { background: var(--bg-3); color: var(--fg); }
+.focus-chip.on { background: var(--fg); border-color: var(--fg); color: #000; }
+.focus-chip small { font-size: 11px; opacity: .7; font-variant-numeric: tabular-nums; }
+
+/* CSP notice */
+.csp-notice { position: absolute; bottom: 12px; right: 12px; z-index: 20; width: min(480px, calc(100% - 24px)); background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 10px; box-shadow: var(--shadow); padding: 14px 16px; display: grid; gap: 12px; }
+.csp-head { display: flex; gap: 12px; align-items: flex-start; }
+.csp-head > .icon { color: var(--mid); margin-top: 2px; }
+.csp-body { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.csp-body p { margin: 0; color: var(--fg-2); }
+.csp-body strong { color: var(--fg); }
+.csp-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
 /* Find bar */
 .find-bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bg-2); border-bottom: 1px solid var(--line); }
